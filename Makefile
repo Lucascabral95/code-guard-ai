@@ -1,4 +1,4 @@
-.PHONY: help install up down logs dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset
+.PHONY: help install up down logs dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset redeploy
 
 help:
 	@echo "CodeGuard AI commands:"
@@ -17,7 +17,8 @@ help:
 	@echo "  make lint          Run TypeScript linting and Go vet"
 	@echo "  make build         Build all apps"
 	@echo "  make clean         Remove generated local artifacts"
-	@echo "  make reset         Recreate Docker Compose services and volumes"
+	@echo "  make reset         Alias for make redeploy"
+	@echo "  make redeploy      Delete Docker volumes, rebuild, start services and run migrations"
 
 install:
 	npm install --cache .npm-cache --ignore-scripts
@@ -74,6 +75,9 @@ build:
 clean:
 	powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -Directory -Recurse -Force -Include node_modules,.next,dist,bin,tmp,temp,coverage | Remove-Item -Recurse -Force"
 
-reset:
-	docker compose down -v
+redeploy:
+	docker compose down -v --remove-orphans
 	docker compose up --build -d
+	docker compose exec analysis-service npx prisma migrate deploy
+
+reset: redeploy

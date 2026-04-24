@@ -1,0 +1,183 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  NODE_VERSION: 24.x
+  NEXT_TELEMETRY_DISABLED: 1
+  NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+  SAFE_ANALYSIS_MODE: true
+  OLLAMA_ENABLED: false
+
+jobs:
+  node-quality:
+    name: Node quality, tests and builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Generate Prisma client
+        run: npm --workspace @codeguard/analysis-service run prisma:generate
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint workspaces
+        run: npm run lint --workspaces --if-present
+
+      - name: Test workspaces
+        run: npm run test --workspaces --if-present
+
+      - name: Build workspaces
+        run: npm run build --workspaces --if-present
+
+  go-quality:
+    name: Go quality, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: apps/analyzer-worker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/analyzer-worker/go.mod
+          cache-dependency-path: apps/analyzer-worker/go.sum
+
+      - name: Check Go formatting
+        run: |
+          gofmt -l . | tee /tmp/gofmt.out
+          test ! -s /tmp/gofmt.out
+
+      - name: Test Go packages
+        run: go test ./...
+
+      - name: Vet Go packages
+        run: go vet ./...
+
+      - name: Build worker
+        run: go build ./cmd/worker
+
+  prisma-migrations:
+    name: Prisma migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: codeguard
+          POSTGRES_PASSWORD: codeguard
+          POSTGRES_DB: codeguard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U codeguard -d codeguard"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://codeguard:codeguard@localhost:5432/codeguard
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Apply Prisma migrations
+        run: npm --workspace @codeguard/analysis-service run db:deploy
+
+  compose-validation:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate Docker Compose config
+        run: docker compose config --quiet
+
+  docker-build:
+    name: Docker build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs:
+      - node-quality
+      - go-quality
+      - prisma-migrations
+      - compose-validation
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: web
+            dockerfile: apps/web/Dockerfile
+          - service: api-gateway
+            dockerfile: apps/api-gateway/Dockerfile
+          - service: analysis-service
+            dockerfile: apps/analysis-service/Dockerfile
+          - service: analyzer-worker
+            dockerfile: apps/analyzer-worker/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: codeguard-ai/${{ matrix.service }}:ci
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }}

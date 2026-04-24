@@ -10,10 +10,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="flex items-center gap-4 text-sm text-[var(--muted)]">
             <Link href="/dashboard" className="hover:text-[var(--text)]">
-              Dashboard
+              Portfolio
             </Link>
             <Link href="/dashboard/analyses/new" className="hover:text-[var(--text)]">
-              New Analysis
+              New Scan
             </Link>
           </nav>
         </div>

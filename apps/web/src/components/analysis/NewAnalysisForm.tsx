@@ -60,12 +60,12 @@ export function NewAnalysisForm() {
 
         {createAnalysis.isError && (
           <div className="rounded-md border border-rose-900 bg-rose-950/30 p-3 text-sm text-rose-100">
-            Could not create the analysis.
+            Could not create the scan.
           </div>
         )}
 
         <Button type="submit" disabled={createAnalysis.isPending}>
-          {createAnalysis.isPending ? 'Creating...' : 'Create Analysis'}
+          {createAnalysis.isPending ? 'Creating...' : 'Create Scan'}
         </Button>
       </div>
     </form>

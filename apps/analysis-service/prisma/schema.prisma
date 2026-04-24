@@ -47,6 +47,34 @@ enum LogLevel {
   ERROR
 }
 
+enum FindingStatus {
+  OPEN
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+  FIXED
+}
+
+enum ToolRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum ArtifactKind {
+  NORMALIZED_JSON
+  SARIF
+  CYCLONEDX
+  MARKDOWN_REPORT
+  RAW_TOOL_OUTPUT
+}
+
+enum PolicyAction {
+  WARN
+  FAIL
+}
+
 model Analysis {
   id            String         @id @default(uuid())
   repoUrl       String
@@ -64,27 +92,47 @@ model Analysis {
   completedAt   DateTime?
   findings      Finding[]
   logs          AnalysisLog[]
+  scan          Scan?
 
   @@index([createdAt])
   @@index([status])
 }
 
 model Finding {
-  id             String      @id @default(uuid())
+  id             String        @id @default(uuid())
   analysisId     String
+  scanId         String?
+  fingerprint    String?
+  category       String?
   type           FindingType
   severity       Severity
+  status         FindingStatus @default(OPEN)
+  confidence     Float?
+  cwe            String?
+  cve            String?
+  cvss           Float?
+  epss           Float?
   tool           String
   file           String?
   line           Int?
   message        String
   recommendation String?
   raw            Json?
-  createdAt      DateTime    @default(now())
-  analysis       Analysis    @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  firstSeenAt     DateTime      @default(now())
+  lastSeenAt      DateTime      @default(now())
+  fixedAt         DateTime?
+  acceptedUntil   DateTime?
+  createdAt       DateTime      @default(now())
+  analysis        Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  scan            Scan?         @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  evidences       Evidence[]
+  remediation     Remediation?
 
   @@index([analysisId])
+  @@index([scanId])
   @@index([severity])
+  @@index([status])
+  @@unique([scanId, fingerprint])
 }
 
 model AnalysisLog {
@@ -96,4 +144,252 @@ model AnalysisLog {
   analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
 
   @@index([analysisId])
+}
+
+model Workspace {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  projects  Project[]
+  policies  Policy[]
+  auditLogs AuditLog[]
+}
+
+model Project {
+  id          String         @id @default(uuid())
+  workspaceId String
+  name        String
+  slug        String
+  description String?
+  riskScore   Int?
+  riskLevel   RiskLevel?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  repositories Repository[]
+  snapshots   RiskSnapshot[]
+  auditLogs   AuditLog[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([riskLevel])
+}
+
+model Repository {
+  id            String   @id @default(uuid())
+  projectId     String
+  provider      String   @default("github")
+  repoUrl       String
+  defaultBranch String   @default("main")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scans         Scan[]
+
+  @@unique([projectId, repoUrl])
+  @@index([projectId])
+}
+
+model Scan {
+  id            String         @id @default(uuid())
+  repositoryId  String
+  analysisId    String?        @unique
+  branch        String         @default("main")
+  commitSha     String?
+  status        AnalysisStatus
+  currentStage  String?
+  riskScore     Int?
+  riskLevel     RiskLevel?
+  summary       String?
+  detectedStack String?
+  safeMode      Boolean        @default(true)
+  errorMessage  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  startedAt     DateTime?
+  completedAt   DateTime?
+  repository    Repository     @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  analysis      Analysis?      @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  toolRuns      ToolRun[]
+  findings      Finding[]
+  artifacts     Artifact[]
+  components    Component[]
+  licenseRisks  LicenseRisk[]
+  snapshots     RiskSnapshot[]
+
+  @@index([repositoryId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ToolRun {
+  id          String        @id @default(uuid())
+  scanId      String
+  tool        String
+  stage       String
+  status      ToolRunStatus
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+  exitCode    Int?
+  summary     String?
+  errorMessage String?
+  raw          Json?
+  scan        Scan          @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([tool])
+  @@index([status])
+}
+
+model Evidence {
+  id        String   @id @default(uuid())
+  findingId String
+  title     String
+  snippet   String?
+  file      String?
+  lineStart Int?
+  lineEnd   Int?
+  raw       Json?
+  createdAt DateTime @default(now())
+  finding   Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([findingId])
+}
+
+model Remediation {
+  id          String   @id @default(uuid())
+  findingId   String   @unique
+  title       String
+  description String
+  effort      String?
+  priority    Int      @default(3)
+  createdAt   DateTime @default(now())
+  finding     Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+}
+
+model Component {
+  id           String          @id @default(uuid())
+  scanId       String
+  name         String
+  version      String?
+  ecosystem    String?
+  packageUrl   String?
+  license      String?
+  direct       Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  scan         Scan            @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  vulnerabilities Vulnerability[]
+
+  @@index([scanId])
+  @@index([ecosystem])
+  @@unique([scanId, name, version, ecosystem])
+}
+
+model Vulnerability {
+  id             String    @id @default(uuid())
+  componentId    String?
+  scanId         String?
+  source         String
+  externalId     String
+  severity       Severity
+  cvss           Float?
+  epss           Float?
+  fixedVersion   String?
+  title          String
+  description    String?
+  url            String?
+  createdAt      DateTime  @default(now())
+  component      Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@index([componentId])
+  @@index([scanId])
+  @@index([externalId])
+}
+
+model LicenseRisk {
+  id          String   @id @default(uuid())
+  scanId      String
+  component   String
+  license     String
+  risk        String
+  policy      String?
+  createdAt   DateTime @default(now())
+  scan        Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([risk])
+}
+
+model Policy {
+  id          String       @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  category    String
+  severity    Severity
+  action      PolicyAction
+  enabled     Boolean      @default(true)
+  config      Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([category])
+}
+
+model RiskSnapshot {
+  id        String    @id @default(uuid())
+  projectId String?
+  scanId    String?
+  score     Int
+  level     RiskLevel
+  critical  Int       @default(0)
+  high      Int       @default(0)
+  medium    Int       @default(0)
+  low       Int       @default(0)
+  info      Int       @default(0)
+  createdAt DateTime  @default(now())
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scan      Scan?     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([scanId])
+  @@index([createdAt])
+}
+
+model Artifact {
+  id          String       @id @default(uuid())
+  scanId      String
+  kind        ArtifactKind
+  name        String
+  contentType String
+  path        String?
+  content     Json?
+  createdAt   DateTime     @default(now())
+  scan        Scan         @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([kind])
+}
+
+model AuditLog {
+  id          String     @id @default(uuid())
+  workspaceId String?
+  projectId   String?
+  actor       String
+  action      String
+  targetType  String
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime   @default(now())
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([createdAt])
 }

@@ -7,7 +7,13 @@ import (
 )
 
 type PackageJSON struct {
-	Scripts map[string]string `json:"scripts"`
+	Name            string            `json:"name"`
+	Version         string            `json:"version"`
+	Scripts         map[string]string `json:"scripts"`
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
+	Engines         map[string]string `json:"engines"`
+	License         any               `json:"license"`
 }
 
 func ParsePackageJSON(path string) (PackageJSON, error) {
@@ -23,6 +29,15 @@ func ParsePackageJSON(path string) (PackageJSON, error) {
 	}
 	if manifest.Scripts == nil {
 		manifest.Scripts = map[string]string{}
+	}
+	if manifest.Dependencies == nil {
+		manifest.Dependencies = map[string]string{}
+	}
+	if manifest.DevDependencies == nil {
+		manifest.DevDependencies = map[string]string{}
+	}
+	if manifest.Engines == nil {
+		manifest.Engines = map[string]string{}
 	}
 	return manifest, nil
 }

@@ -18,4 +18,4 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=build /app/apps/api-gateway/dist ./dist
 COPY apps/api-gateway/package.json ./package.json
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

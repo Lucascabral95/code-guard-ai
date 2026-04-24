@@ -16,7 +16,8 @@ FROM node:24-alpine AS runner
 WORKDIR /app/apps/analysis-service
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/analysis-service/node_modules ./node_modules
 COPY --from=build /app/apps/analysis-service/dist ./dist
 COPY --from=build /app/apps/analysis-service/prisma ./prisma
 COPY apps/analysis-service/package.json ./package.json
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

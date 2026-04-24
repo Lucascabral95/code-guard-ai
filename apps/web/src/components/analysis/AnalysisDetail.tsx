@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useAnalysis } from '@/features/analyses/hooks';
 import type { Finding } from '@/features/analyses/types';
@@ -61,12 +62,7 @@ export function AnalysisDetail({ id }: { id: string }) {
           </div>
         )}
 
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Summary
-          </h2>
-          <p className="mt-2 leading-7 text-slate-200">{analysis.summary ?? 'Summary pending.'}</p>
-        </div>
+        <ExecutiveSummary summary={analysis.summary} status={analysis.status} />
       </section>
 
       <section>
@@ -134,13 +130,68 @@ export function AnalysisDetail({ id }: { id: string }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: React.ReactNode }) {
+function ExecutiveSummary({ summary, status }: { summary: string | null; status: string }) {
+  const insights = splitSummary(summary);
+  const isPending = insights.length === 0;
+
+  return (
+    <div className="mt-6 rounded-md border border-[var(--border)] bg-[#0b1018] p-5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Executive Summary
+          </h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Rule-based assessment generated from normalized scan evidence.
+          </p>
+        </div>
+        <span className="w-fit rounded-md border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-[var(--muted)]">
+          {isPending ? status.toLowerCase() : 'generated'}
+        </span>
+      </div>
+
+      {isPending ? (
+        <div className="mt-4 rounded-md border border-dashed border-[var(--border)] bg-[var(--panel)] p-4">
+          <p className="font-medium text-slate-200">Summary is not available yet.</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            The worker is still processing evidence or the scan has not produced a final report.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3">
+          {insights.map((insight, index) => (
+            <div key={insight} className="grid grid-cols-[28px_1fr] gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--panel-muted)] text-xs font-semibold text-[var(--accent)]">
+                {index + 1}
+              </span>
+              <p className="leading-7 text-slate-200">{insight}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-md border border-[var(--border)] bg-[#0b1018] p-4">
       <p className="text-xs uppercase tracking-wide text-[var(--muted)]">{label}</p>
       <div className="mt-2 min-h-7 text-lg font-semibold">{value}</div>
     </div>
   );
+}
+
+function splitSummary(summary: string | null): string[] {
+  if (!summary?.trim()) {
+    return [];
+  }
+
+  return summary
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function groupFindings(findings: Finding[]): Record<string, Finding[]> {

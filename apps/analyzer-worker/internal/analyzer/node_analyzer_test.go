@@ -45,4 +45,39 @@ func TestParsePackageJSONInitializesMissingScripts(t *testing.T) {
 	if parsed.Scripts == nil {
 		t.Fatalf("expected scripts map to be initialized")
 	}
+	if parsed.Dependencies == nil {
+		t.Fatalf("expected dependencies map to be initialized")
+	}
+}
+
+func TestParsePackageJSONParsesDependencyInventory(t *testing.T) {
+	t.Parallel()
+
+	repoPath := t.TempDir()
+	manifestPath := filepath.Join(repoPath, "package.json")
+	manifest := []byte(`{
+		"name":"sample",
+		"dependencies":{"next":"16.0.0"},
+		"devDependencies":{"typescript":"5.9.3"},
+		"engines":{"node":">=20"},
+		"license":"MIT"
+	}`)
+	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	parsed, err := ParsePackageJSON(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if parsed.Dependencies["next"] != "16.0.0" {
+		t.Fatalf("expected dependency inventory to be parsed")
+	}
+	if parsed.DevDependencies["typescript"] != "5.9.3" {
+		t.Fatalf("expected dev dependency inventory to be parsed")
+	}
+	if parsed.Engines["node"] != ">=20" {
+		t.Fatalf("expected engines to be parsed")
+	}
 }

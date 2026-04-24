@@ -35,4 +35,25 @@ describe('RiskScoringService', () => {
     expect(score).toBe(0);
     expect(service.calculateRiskLevel(score)).toBe('CRITICAL');
   });
+
+  it('weights exploitability, confidence and category for enterprise findings', () => {
+    const score = service.calculateRiskScore(
+      [
+        {
+          type: FindingType.SECURITY,
+          severity: Severity.HIGH,
+          message: 'Reachable vulnerable dependency',
+          category: 'supply-chain',
+          confidence: 0.95,
+          cve: 'CVE-2026-0001',
+          cvss: 9.1,
+          epss: 0.6,
+        },
+      ],
+      { licenseRiskCount: 1 },
+    );
+
+    expect(score).toBe(45);
+    expect(service.calculateRiskLevel(score)).toBe('HIGH');
+  });
 });
