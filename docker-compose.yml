@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codeguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codeguard}
+      POSTGRES_DB: ${POSTGRES_DB:-codeguard}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-codeguard} -d ${POSTGRES_DB:-codeguard}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  analysis-service:
+    build:
+      context: .
+      dockerfile: apps/analysis-service/Dockerfile
+    environment:
+      PORT: ${ANALYSIS_SERVICE_PORT:-3002}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://codeguard:codeguard@postgres:5432/codeguard}
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-dev-internal-secret}
+      SAFE_ANALYSIS_MODE: ${SAFE_ANALYSIS_MODE:-true}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+    ports:
+      - '3002:3002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3002/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    environment:
+      PORT: ${API_GATEWAY_PORT:-3001}
+      ANALYSIS_SERVICE_URL: ${ANALYSIS_SERVICE_URL:-http://analysis-service:3002}
+      WEB_ORIGIN: http://localhost:3000
+    ports:
+      - '3001:3001'
+    depends_on:
+      analysis-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3001/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  analyzer-worker:
+    build:
+      context: .
+      dockerfile: apps/analyzer-worker/Dockerfile
+    environment:
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      ANALYSIS_SERVICE_URL: ${ANALYSIS_SERVICE_URL:-http://analysis-service:3002}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-dev-internal-secret}
+      WORKER_CONSUMER_NAME: ${WORKER_CONSUMER_NAME:-worker-1}
+      SAFE_ANALYSIS_MODE: ${SAFE_ANALYSIS_MODE:-true}
+      TEMP_DIR: ${TEMP_DIR:-/tmp/codeguard}
+    depends_on:
+      redis:
+        condition: service_healthy
+      analysis-service:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

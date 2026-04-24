@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.cache/
+.npm-cache/
+.go-cache/
+apps/web/code-guard-ai/
+apps/web/next-env.d.ts
+package-lock.json
+apps/**/node_modules/
+apps/**/dist/
+apps/**/.next/
+packages/**/dist/
