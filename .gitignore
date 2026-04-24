@@ -5,9 +5,11 @@ build/
 coverage/
 .turbo/
 .cache/
+**/.cache/
 .npm-cache/
 .go-cache/
 .docker-config/
+.vscode/
 *.tsbuildinfo
 
 .env

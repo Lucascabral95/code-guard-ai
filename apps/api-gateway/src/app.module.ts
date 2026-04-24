@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AnalysisServiceClient } from './clients/analysis-service.client';
 import { AnalysesModule } from './modules/analyses/analyses.module';
 import { HealthModule } from './modules/health/health.module';
+import { EnterpriseModule } from './modules/enterprise/enterprise.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HealthModule } from './modules/health/health.module';
     ]),
     HealthModule,
     AnalysesModule,
+    EnterpriseModule,
   ],
   providers: [AnalysisServiceClient],
   exports: [AnalysisServiceClient],

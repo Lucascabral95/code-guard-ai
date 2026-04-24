@@ -71,6 +71,7 @@ func JobFromMessage(message redis.XMessage) (contracts.AnalysisJob, error) {
 	values := message.Values
 	job := contracts.AnalysisJob{
 		AnalysisID: stringValue(values, "analysisId"),
+		ScanID:     stringValue(values, "scanId"),
 		RepoURL:    stringValue(values, "repoUrl"),
 		Branch:     stringValue(values, "branch"),
 		SafeMode:   boolValue(values, "safeMode"),

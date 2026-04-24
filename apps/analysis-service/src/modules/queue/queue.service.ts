@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 
 export interface AnalysisJob {
   analysisId: string;
+  scanId?: string;
   repoUrl: string;
   branch: string;
   safeMode: boolean;
@@ -12,9 +13,10 @@ export interface AnalysisJob {
 @Injectable()
 export class QueueService implements OnModuleDestroy {
   private readonly redis: Redis;
-  private readonly streamName = 'analysis.jobs';
+  private readonly streamName: string;
 
   constructor(configService: ConfigService) {
+    this.streamName = configService.get<string>('ANALYSIS_STREAM_NAME', 'scan.jobs');
     const redisAddr = configService.get<string>('REDIS_ADDR', 'localhost:6379');
     const [host, port] = redisAddr.split(':');
     this.redis = new Redis({
@@ -30,6 +32,8 @@ export class QueueService implements OnModuleDestroy {
       '*',
       'analysisId',
       job.analysisId,
+      'scanId',
+      job.scanId ?? '',
       'repoUrl',
       job.repoUrl,
       'branch',

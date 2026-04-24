@@ -5,9 +5,9 @@ export default function NewAnalysisPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="text-3xl font-semibold">New Analysis</h1>
+        <h1 className="text-3xl font-semibold">New Scan</h1>
         <p className="mt-2 text-[var(--muted)]">
-          Submit a public GitHub repository for safe asynchronous review.
+          Submit a public GitHub repository for safe asynchronous security review.
         </p>
       </div>
       <NewAnalysisForm />
