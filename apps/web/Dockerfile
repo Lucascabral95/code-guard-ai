@@ -1,4 +1,4 @@
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY apps/web/package.json apps/web/package.json
@@ -14,7 +14,7 @@ COPY apps/web apps/web
 COPY packages/shared-types packages/shared-types
 RUN npm --workspace @codeguard/web run build
 
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app/apps/web
 ENV NODE_ENV=production
 ENV PORT=3000
