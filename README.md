@@ -58,6 +58,42 @@ Open `http://localhost:3000` and create a scan for a public repository, for exam
 https://github.com/vercel/next.js
 ```
 
+## Quality Gates
+
+Local validation:
+
+```bash
+make lint
+make test
+make build
+docker compose config --quiet
+```
+
+The GitHub Actions workflow in `.github/workflows/ci-cd.yml` runs the same professional checks on pull requests and pushes to `main`:
+
+- formatting and ESLint for all TypeScript workspaces
+- Jest tests for NestJS services
+- Next.js, NestJS and shared-types builds
+- Prisma client generation
+- Prisma migrations against an ephemeral PostgreSQL service
+- Go formatting, tests, vet and worker build
+- Docker Compose validation
+- Docker image builds without publishing
+
+No deployment or container registry publishing is configured yet.
+
+## Dependency Updates
+
+Dependabot is configured in `.github/dependabot.yml` for controlled weekly dependency maintenance:
+
+- npm workspace dependencies
+- Go module dependencies
+- GitHub Actions versions
+
+Dependabot is intentionally limited to minor and patch updates. Major upgrades are ignored by default because they often require manual migration work. For example, Prisma 7 removes support for `datasource.url` in `schema.prisma`, so upgrading from Prisma 6 to Prisma 7 must be handled as a deliberate migration, not an automatic dependency PR.
+
+Dependabot branches are not created on every commit. They are created when GitHub runs the configured schedule, when the configuration changes, or when a security update is detected. If a Dependabot PR fails CI, it is safe to leave it unmerged, close it, or handle the upgrade manually.
+
 ## Services
 
 - `web`: dashboard on `http://localhost:3000`.
