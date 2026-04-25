@@ -96,6 +96,17 @@ services:
       SAFE_ANALYSIS_MODE: ${SAFE_ANALYSIS_MODE:-true}
       SANDBOX_ANALYSIS_MODE: ${SANDBOX_ANALYSIS_MODE:-docker}
       TEMP_DIR: ${TEMP_DIR:-/tmp/codeguard}
+      SCANNER_TIMEOUT_SECONDS: ${SCANNER_TIMEOUT_SECONDS:-120}
+      SCANNER_OUTPUT_LIMIT_BYTES: ${SCANNER_OUTPUT_LIMIT_BYTES:-10485760}
+      SCANNER_DOCKER_NETWORK: ${SCANNER_DOCKER_NETWORK:-none}
+      SCANNER_SHARED_VOLUME: ${SCANNER_SHARED_VOLUME:-}
+      SCANNER_WORKSPACE_PATH: ${SCANNER_WORKSPACE_PATH:-/workspace}
+      SCANNER_MEMORY_LIMIT: ${SCANNER_MEMORY_LIMIT:-2g}
+      SCANNER_CPU_LIMIT: ${SCANNER_CPU_LIMIT:-2.0}
+      SEMGREP_IMAGE: ${SEMGREP_IMAGE:-semgrep/semgrep:latest}
+      TRIVY_IMAGE: ${TRIVY_IMAGE:-aquasec/trivy:latest}
+      OSV_SCANNER_IMAGE: ${OSV_SCANNER_IMAGE:-ghcr.io/google/osv-scanner:latest}
+      GITLEAKS_IMAGE: ${GITLEAKS_IMAGE:-zricethezav/gitleaks:latest}
     depends_on:
       redis:
         condition: service_healthy

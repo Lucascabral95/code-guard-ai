@@ -386,6 +386,43 @@ export class AnalysesService {
         });
       }
 
+      if (scan && (dto.vulnerabilities?.length ?? 0) > 0) {
+        const persistedComponents = await transaction.component.findMany({
+          where: { scanId: scan.id },
+        });
+        const componentIndex = new Map(
+          persistedComponents.map((component) => [
+            this.componentIdentity(component.name, component.version, component.ecosystem),
+            component.id,
+          ]),
+        );
+
+        await transaction.vulnerability.createMany({
+          data: dto.vulnerabilities!.map((vulnerability) => ({
+            componentId:
+              vulnerability.componentName != null
+                ? (componentIndex.get(
+                    this.componentIdentity(
+                      vulnerability.componentName,
+                      vulnerability.version ?? null,
+                      vulnerability.ecosystem ?? null,
+                    ),
+                  ) ?? null)
+                : null,
+            scanId: scan.id,
+            source: vulnerability.source,
+            externalId: vulnerability.externalId,
+            severity: vulnerability.severity,
+            cvss: vulnerability.cvss ?? null,
+            epss: vulnerability.epss ?? null,
+            fixedVersion: vulnerability.fixedVersion ?? null,
+            title: vulnerability.title,
+            description: vulnerability.description ?? null,
+            url: vulnerability.url ?? null,
+          })),
+        });
+      }
+
       if (scan && (dto.licenseRisks?.length ?? 0) > 0) {
         await transaction.licenseRisk.createMany({
           data: dto.licenseRisks!.map((licenseRisk) => ({
@@ -653,5 +690,13 @@ export class AnalysesService {
 
   private toJson(value: unknown): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private componentIdentity(
+    name: string,
+    version: string | null | undefined,
+    ecosystem: string | null | undefined,
+  ) {
+    return [name, version ?? '', ecosystem ?? ''].join('|');
   }
 }

@@ -2,15 +2,24 @@ import { apiClient } from '@/lib/axios';
 import type {
   Analysis,
   AnalysisDetailResponse,
+  CreatePolicyRequest,
   CreateAnalysisRequest,
   CreateProjectRequest,
   CreateScanRequest,
+  ExecutiveReportResponse,
   Finding,
-  FindingStatus,
+  FindingDetailResponse,
+  Policy,
   PortfolioRiskResponse,
   Project,
   ProjectDetailResponse,
+  ProjectRiskHistoryResponse,
+  RemediationOverviewResponse,
+  RemediationPlanResponse,
   ScanDetailResponse,
+  ScanCompareResponse,
+  UpdateFindingStatusRequest,
+  UpdatePolicyRequest,
 } from './types';
 
 export async function listAnalyses(): Promise<Analysis[]> {
@@ -56,12 +65,65 @@ export async function getScan(id: string): Promise<ScanDetailResponse> {
   return response.data;
 }
 
+export async function getExecutiveReport(id: string): Promise<ExecutiveReportResponse> {
+  const response = await apiClient.get<ExecutiveReportResponse>(`/scans/${id}/report/executive`);
+  return response.data;
+}
+
+export async function getRemediationPlan(id: string): Promise<RemediationPlanResponse> {
+  const response = await apiClient.get<RemediationPlanResponse>(`/scans/${id}/remediation-plan`);
+  return response.data;
+}
+
+export async function compareScans(
+  id: string,
+  previousScanId: string,
+): Promise<ScanCompareResponse> {
+  const response = await apiClient.get<ScanCompareResponse>(
+    `/scans/${id}/compare/${previousScanId}`,
+  );
+  return response.data;
+}
+
+export async function getProjectRiskHistory(id: string): Promise<ProjectRiskHistoryResponse> {
+  const response = await apiClient.get<ProjectRiskHistoryResponse>(`/projects/${id}/risk-history`);
+  return response.data;
+}
+
 export async function getPortfolioRisk(): Promise<PortfolioRiskResponse> {
   const response = await apiClient.get<PortfolioRiskResponse>('/dashboard/portfolio-risk');
   return response.data;
 }
 
-export async function updateFindingStatus(id: string, status: FindingStatus): Promise<Finding> {
-  const response = await apiClient.post<Finding>(`/findings/${id}/status`, { status });
+export async function getRemediationOverview(): Promise<RemediationOverviewResponse> {
+  const response = await apiClient.get<RemediationOverviewResponse>('/dashboard/remediation');
+  return response.data;
+}
+
+export async function listPolicies(): Promise<Policy[]> {
+  const response = await apiClient.get<Policy[]>('/policies');
+  return response.data;
+}
+
+export async function createPolicy(input: CreatePolicyRequest): Promise<Policy> {
+  const response = await apiClient.post<Policy>('/policies', input);
+  return response.data;
+}
+
+export async function updatePolicy(id: string, input: UpdatePolicyRequest): Promise<Policy> {
+  const response = await apiClient.put<Policy>(`/policies/${id}`, input);
+  return response.data;
+}
+
+export async function getFinding(id: string): Promise<FindingDetailResponse> {
+  const response = await apiClient.get<FindingDetailResponse>(`/findings/${id}`);
+  return response.data;
+}
+
+export async function updateFindingStatus(
+  id: string,
+  input: UpdateFindingStatusRequest,
+): Promise<Finding> {
+  const response = await apiClient.post<Finding>(`/findings/${id}/status`, input);
   return response.data;
 }

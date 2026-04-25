@@ -66,6 +66,49 @@ export function CategoryBars({ data }: { data: PortfolioRiskResponse['findingsBy
   );
 }
 
+export function LicenseDistribution({
+  data,
+}: {
+  data: NonNullable<PortfolioRiskResponse['licenseDistribution']>;
+}) {
+  if (data.length === 0) {
+    return <p className="text-sm text-[var(--muted)]">No license data yet.</p>;
+  }
+
+  return <HorizontalBars data={data.map((item) => ({ label: item.license, value: item.count }))} />;
+}
+
+export function ToolHealth({ data }: { data: NonNullable<PortfolioRiskResponse['toolHealth']> }) {
+  if (data.length === 0) {
+    return <p className="text-sm text-[var(--muted)]">No tool execution data yet.</p>;
+  }
+
+  return (
+    <div className="grid gap-2">
+      {data.slice(0, 8).map((item) => (
+        <div
+          key={`${item.tool}-${item.status}`}
+          className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-md bg-[#0b1018] p-3 text-sm"
+        >
+          <span className="truncate font-medium">{item.tool}</span>
+          <span className="text-xs text-[var(--muted)]">{item.status}</span>
+          <span className="tabular-nums">{item.count}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AgingBuckets({ aging }: { aging: NonNullable<PortfolioRiskResponse['aging']> }) {
+  const data = [
+    { label: '< 7d', value: aging.under7Days },
+    { label: '7-30d', value: aging.between7And30Days },
+    { label: '> 30d', value: aging.over30Days },
+  ];
+
+  return <HorizontalBars data={data} />;
+}
+
 export function RiskTrend({ snapshots }: { snapshots: RiskSnapshot[] }) {
   if (snapshots.length === 0) {
     return <p className="text-sm text-[var(--muted)]">No historical risk snapshots yet.</p>;
@@ -99,5 +142,26 @@ export function RiskTrend({ snapshots }: { snapshots: RiskSnapshot[] }) {
         return <circle key={snapshot.id} cx={x} cy={y} r="4" fill="#eef3fb" />;
       })}
     </svg>
+  );
+}
+
+function HorizontalBars({ data }: { data: Array<{ label: string; value: number }> }) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+
+  return (
+    <div className="grid gap-3">
+      {data.map((item) => (
+        <div key={item.label} className="grid grid-cols-[84px_1fr_40px] items-center gap-3 text-sm">
+          <span className="truncate text-[var(--muted)]">{item.label}</span>
+          <div className="h-2 overflow-hidden rounded-full bg-[#0b1018]">
+            <div
+              className="h-full rounded-full bg-[var(--accent)]"
+              style={{ width: `${Math.max((item.value / max) * 100, item.value > 0 ? 6 : 0)}%` }}
+            />
+          </div>
+          <span className="text-right tabular-nums text-slate-200">{item.value}</span>
+        </div>
+      ))}
+    </div>
   );
 }

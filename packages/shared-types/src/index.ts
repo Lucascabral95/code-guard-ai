@@ -43,6 +43,7 @@ export enum FindingStatus {
   AcceptedRisk = 'ACCEPTED_RISK',
   FalsePositive = 'FALSE_POSITIVE',
   Fixed = 'FIXED',
+  Reopened = 'REOPENED',
 }
 
 export enum ToolRunStatus {
@@ -51,6 +52,7 @@ export enum ToolRunStatus {
   Completed = 'COMPLETED',
   Failed = 'FAILED',
   Skipped = 'SKIPPED',
+  TimedOut = 'TIMED_OUT',
 }
 
 export enum ArtifactKind {
@@ -59,6 +61,11 @@ export enum ArtifactKind {
   CycloneDx = 'CYCLONEDX',
   MarkdownReport = 'MARKDOWN_REPORT',
   RawToolOutput = 'RAW_TOOL_OUTPUT',
+}
+
+export enum PolicyAction {
+  Warn = 'WARN',
+  Fail = 'FAIL',
 }
 
 export interface Analysis {
@@ -105,6 +112,10 @@ export interface Finding {
   createdAt: string;
   evidences?: Evidence[];
   remediation?: Remediation | null;
+}
+
+export interface FindingDetailResponse extends Finding {
+  scan?: Scan | null;
 }
 
 export interface AnalysisLog {
@@ -327,4 +338,162 @@ export interface PortfolioRiskResponse {
   severityTrend: RiskSnapshot[];
   latestScans: Scan[];
   findingsByCategory: Array<{ category: string; count: number }>;
+  toolHealth?: Array<{ tool: string; status: string; count: number }>;
+  licenseDistribution?: Array<{ license: string; count: number }>;
+  aging?: {
+    under7Days: number;
+    between7And30Days: number;
+    over30Days: number;
+  };
+}
+
+export interface RemediationOverviewItem {
+  rank: number;
+  ageDays: number;
+  finding: Finding;
+  whyThisMatters: string;
+  suggestedAction: string;
+  ownerHint: string;
+  repository: Repository | null;
+  project: Pick<Project, 'id' | 'name' | 'slug' | 'riskScore' | 'riskLevel'> | null;
+  scan: Pick<
+    Scan,
+    'id' | 'branch' | 'status' | 'riskScore' | 'riskLevel' | 'createdAt' | 'completedAt'
+  > | null;
+}
+
+export interface RemediationOverviewResponse {
+  generatedAt: string;
+  totals: {
+    projects: number;
+    scans: number;
+    openFindings: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    info: number;
+    staleOver30Days: number;
+    activePolicyFailures: number;
+  };
+  summary: {
+    itemsReadyForRemediation: number;
+    failingScans: number;
+    projectsAtRisk: number;
+  };
+  fixFirst: RemediationOverviewItem[];
+  staleFindings: RemediationOverviewItem[];
+  policyFailures: Array<{
+    scanId: string;
+    repoUrl: string;
+    projectId: string | null;
+    projectName: string | null;
+    failed: number;
+    warned: number;
+    riskScore: number | null;
+    riskLevel: RiskLevel | null;
+    createdAt: string;
+  }>;
+  latestScans: Scan[];
+}
+
+export interface Policy {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string | null;
+  category: string;
+  severity: Severity;
+  action: PolicyAction;
+  enabled: boolean;
+  config: unknown | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePolicyRequest {
+  name: string;
+  description?: string;
+  category: string;
+  severity: Severity;
+  action: PolicyAction;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+}
+
+export type UpdatePolicyRequest = Partial<CreatePolicyRequest>;
+
+export interface UpdateFindingStatusRequest {
+  status: FindingStatus;
+  reason?: string;
+  acceptedUntil?: string;
+}
+
+export interface ExecutiveReportResponse {
+  generatedAt: string;
+  scan: Scan;
+  repository: Repository;
+  executiveSummary: string;
+  risk: {
+    score: number | null;
+    level: RiskLevel | null;
+    openFindings: number;
+    criticalAndHigh: number;
+  };
+  severity: Record<Severity, number>;
+  categories: Array<{ category: string; count: number }>;
+  topFindings: Finding[];
+  policyEvaluation: {
+    failed: number;
+    warned: number;
+    policies: Array<{
+      id: string;
+      name: string;
+      category: string;
+      action: PolicyAction;
+      severity: Severity;
+      passed: boolean;
+      violations: number;
+    }>;
+  };
+  businessImpact: string;
+  recommendedNextSteps: string[];
+}
+
+export interface RemediationPlanResponse {
+  scanId: string;
+  generatedAt: string;
+  totals: Record<Severity, number>;
+  fixFirst: Array<{
+    rank: number;
+    finding: Finding;
+    whyThisMatters: string;
+    suggestedAction: string;
+    ownerHint: string;
+  }>;
+}
+
+export interface ScanCompareResponse {
+  currentScan: Scan;
+  previousScan: Scan;
+  riskDelta: number;
+  added: Finding[];
+  resolved: Finding[];
+  unchanged: Finding[];
+  summary: {
+    added: number;
+    resolved: number;
+    unchanged: number;
+  };
+}
+
+export interface ProjectRiskHistoryResponse {
+  project: Project;
+  snapshots: RiskSnapshot[];
+  trend: Array<{
+    score: number;
+    level: RiskLevel;
+    createdAt: string;
+    totalFindings: number;
+  }>;
 }

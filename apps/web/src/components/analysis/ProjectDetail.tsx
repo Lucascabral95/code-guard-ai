@@ -55,6 +55,12 @@ export function ProjectDetail({ id }: { id: string }) {
             <Button onClick={() => void runScan()} disabled={createScan.isPending}>
               {createScan.isPending ? 'Starting...' : 'Run Scan'}
             </Button>
+            <Link
+              href={`/dashboard/projects/${id}/risk`}
+              className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--border)] px-4 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)] sm:col-span-2"
+            >
+              Risk history
+            </Link>
           </div>
         </div>
 

@@ -1,9 +1,10 @@
-.PHONY: help install up down logs dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset redeploy
+.PHONY: help install up up-scanners down logs dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset redeploy
 
 help:
 	@echo "CodeGuard AI commands:"
 	@echo "  make install       Install Node workspaces and Go worker dependencies"
 	@echo "  make up            Build and start Docker Compose services"
+	@echo "  make up-scanners   Build and start Docker Compose with real scanner runtime enabled"
 	@echo "  make down          Stop Docker Compose services"
 	@echo "  make logs          Follow Docker Compose logs"
 	@echo "  make dev           Show local development commands"
@@ -27,6 +28,9 @@ install:
 
 up:
 	docker compose up --build -d
+
+up-scanners:  # corrélo cada vez que quieras levantar el entorno en modo scanners reales (después de down, reinicio, o cambios de imágenes/config).
+	docker compose -f docker-compose.yml -f docker-compose.scanners.yml up --build -d
 
 down:
 	docker compose down

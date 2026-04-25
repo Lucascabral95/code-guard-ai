@@ -12,6 +12,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link href="/dashboard" className="hover:text-[var(--text)]">
               Portfolio
             </Link>
+            <Link href="/dashboard/projects" className="hover:text-[var(--text)]">
+              Projects
+            </Link>
+            <Link href="/dashboard/remediation" className="hover:text-[var(--text)]">
+              Remediation
+            </Link>
+            <Link href="/dashboard/policies" className="hover:text-[var(--text)]">
+              Policies
+            </Link>
             <Link href="/dashboard/analyses/new" className="hover:text-[var(--text)]">
               New Scan
             </Link>

@@ -37,7 +37,7 @@ func main() {
 	}
 
 	analysisClient := client.NewAnalysisClient(cfg.AnalysisServiceURL, cfg.InternalSecret)
-	repositoryAnalyzer := analyzer.New(cfg.TempDir, cfg.CloneTimeout, log)
+	repositoryAnalyzer := analyzer.New(cfg, log)
 
 	log.Info("analyzer worker started", "consumer", cfg.ConsumerName, "safeMode", cfg.SafeAnalysisMode)
 
