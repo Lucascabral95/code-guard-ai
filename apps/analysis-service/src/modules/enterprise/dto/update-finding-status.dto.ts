@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { FindingStatus } from '@prisma/client';
 
 export class UpdateFindingStatusDto {
@@ -18,4 +18,12 @@ export class UpdateFindingStatusDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-06-30T00:00:00.000Z',
+    description: 'Expiration date for accepted risk decisions.',
+  })
+  @IsOptional()
+  @IsDateString()
+  acceptedUntil?: string;
 }

@@ -6,7 +6,11 @@ coverage/
 .cache/
 .npm-cache/
 .go-cache/
+.gocache/
+**/.gocache/
 .vscode/
+*.exe
+**/prisma/schema.prisma
 apps/web/code-guard-ai/
 apps/web/next-env.d.ts
 package-lock.json

@@ -4,8 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { CreateAnalysisDto } from '../modules/analyses/dto/create-analysis.dto';
+import { CreatePolicyDto } from '../modules/enterprise/dto/create-policy.dto';
 import { CreateProjectDto } from '../modules/enterprise/dto/create-project.dto';
 import { CreateScanDto } from '../modules/enterprise/dto/create-scan.dto';
+import { UpdatePolicyDto } from '../modules/enterprise/dto/update-policy.dto';
 import { UpdateFindingStatusDto } from '../modules/enterprise/dto/update-finding-status.dto';
 
 @Injectable()
@@ -67,6 +69,41 @@ export class AnalysisServiceClient {
     return this.forward('get', `/scans/${encodeURIComponent(id)}/report`);
   }
 
+  async getExecutiveReport(id: string): Promise<unknown> {
+    return this.forward('get', `/scans/${encodeURIComponent(id)}/report/executive`);
+  }
+
+  async getRemediationPlan(id: string): Promise<unknown> {
+    return this.forward('get', `/scans/${encodeURIComponent(id)}/remediation-plan`);
+  }
+
+  async compareScans(id: string, previousScanId: string): Promise<unknown> {
+    return this.forward(
+      'get',
+      `/scans/${encodeURIComponent(id)}/compare/${encodeURIComponent(previousScanId)}`,
+    );
+  }
+
+  async getProjectRiskHistory(id: string): Promise<unknown> {
+    return this.forward('get', `/projects/${encodeURIComponent(id)}/risk-history`);
+  }
+
+  async listPolicies(): Promise<unknown> {
+    return this.forward('get', '/policies');
+  }
+
+  async createPolicy(body: CreatePolicyDto): Promise<unknown> {
+    return this.forward('post', '/policies', body);
+  }
+
+  async updatePolicy(id: string, body: UpdatePolicyDto): Promise<unknown> {
+    return this.forward('put', `/policies/${encodeURIComponent(id)}`, body);
+  }
+
+  async getFinding(id: string): Promise<unknown> {
+    return this.forward('get', `/findings/${encodeURIComponent(id)}`);
+  }
+
   async updateFindingStatus(id: string, body: UpdateFindingStatusDto): Promise<unknown> {
     return this.forward('post', `/findings/${encodeURIComponent(id)}/status`, body);
   }
@@ -75,7 +112,15 @@ export class AnalysisServiceClient {
     return this.forward('get', '/dashboard/portfolio-risk');
   }
 
-  private async forward(method: 'get' | 'post', path: string, body?: unknown): Promise<unknown> {
+  async getDashboardRemediation(): Promise<unknown> {
+    return this.forward('get', '/dashboard/remediation');
+  }
+
+  private async forward(
+    method: 'get' | 'post' | 'put',
+    path: string,
+    body?: unknown,
+  ): Promise<unknown> {
     try {
       const response = await firstValueFrom(
         this.httpService.request({

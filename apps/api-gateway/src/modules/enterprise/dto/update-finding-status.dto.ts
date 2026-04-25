@@ -1,13 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateFindingStatusDto {
   @ApiProperty({
-    enum: ['OPEN', 'ACCEPTED_RISK', 'FALSE_POSITIVE', 'FIXED'],
+    enum: ['OPEN', 'ACCEPTED_RISK', 'FALSE_POSITIVE', 'FIXED', 'REOPENED'],
     example: 'ACCEPTED_RISK',
     description: 'Lifecycle status assigned to the finding.',
   })
-  @IsIn(['OPEN', 'ACCEPTED_RISK', 'FALSE_POSITIVE', 'FIXED'])
+  @IsIn(['OPEN', 'ACCEPTED_RISK', 'FALSE_POSITIVE', 'FIXED', 'REOPENED'])
   status!: string;
 
   @ApiPropertyOptional({
@@ -17,4 +17,12 @@ export class UpdateFindingStatusDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-06-30T00:00:00.000Z',
+    description: 'Expiration date for accepted risk decisions.',
+  })
+  @IsOptional()
+  @IsDateString()
+  acceptedUntil?: string;
 }

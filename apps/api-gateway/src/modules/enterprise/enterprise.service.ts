@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AnalysisServiceClient } from '../../clients/analysis-service.client';
+import { CreatePolicyDto } from './dto/create-policy.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateScanDto } from './dto/create-scan.dto';
+import { UpdatePolicyDto } from './dto/update-policy.dto';
 import { UpdateFindingStatusDto } from './dto/update-finding-status.dto';
 
 @Injectable()
@@ -44,11 +46,47 @@ export class EnterpriseService {
     return this.analysisServiceClient.getScanReport(id);
   }
 
+  getExecutiveReport(id: string): Promise<unknown> {
+    return this.analysisServiceClient.getExecutiveReport(id);
+  }
+
+  getRemediationPlan(id: string): Promise<unknown> {
+    return this.analysisServiceClient.getRemediationPlan(id);
+  }
+
+  compareScans(id: string, previousScanId: string): Promise<unknown> {
+    return this.analysisServiceClient.compareScans(id, previousScanId);
+  }
+
+  getProjectRiskHistory(id: string): Promise<unknown> {
+    return this.analysisServiceClient.getProjectRiskHistory(id);
+  }
+
+  listPolicies(): Promise<unknown> {
+    return this.analysisServiceClient.listPolicies();
+  }
+
+  createPolicy(dto: CreatePolicyDto): Promise<unknown> {
+    return this.analysisServiceClient.createPolicy(dto);
+  }
+
+  updatePolicy(id: string, dto: UpdatePolicyDto): Promise<unknown> {
+    return this.analysisServiceClient.updatePolicy(id, dto);
+  }
+
+  getFinding(id: string): Promise<unknown> {
+    return this.analysisServiceClient.getFinding(id);
+  }
+
   updateFindingStatus(id: string, dto: UpdateFindingStatusDto): Promise<unknown> {
     return this.analysisServiceClient.updateFindingStatus(id, dto);
   }
 
   getPortfolioRisk(): Promise<unknown> {
     return this.analysisServiceClient.getPortfolioRisk();
+  }
+
+  getDashboardRemediation(): Promise<unknown> {
+    return this.analysisServiceClient.getDashboardRemediation();
   }
 }

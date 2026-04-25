@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useScan, useUpdateFindingStatus } from '@/features/analyses/hooks';
-import type { Finding, FindingStatus } from '@/features/analyses/types';
+import { FindingStatus } from '@/features/analyses/types';
+import type { Finding, UpdateFindingStatusRequest } from '@/features/analyses/types';
 import { CategoryBars, SeverityBars } from './EnterpriseCharts';
 import { Button } from '../ui/Button';
 import { RiskBadge } from '../ui/RiskBadge';
@@ -33,8 +35,14 @@ export function ScanDetail({ id }: { id: string }) {
 
   const { scan } = data;
 
-  function setStatus(findingId: string, status: FindingStatus) {
-    updateStatus.mutate({ id: findingId, status });
+  function setStatus(findingId: string, input: UpdateFindingStatusRequest) {
+    updateStatus.mutate({ id: findingId, input });
+  }
+
+  function acceptedUntilDefault() {
+    const expiration = new Date();
+    expiration.setDate(expiration.getDate() + 90);
+    return expiration.toISOString();
   }
 
   return (
@@ -51,9 +59,23 @@ export function ScanDetail({ id }: { id: string }) {
               {scan.safeMode ? 'on' : 'off'}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => void refetch()} disabled={isFetching}>
-            {isFetching ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/dashboard/scans/${scan.id}/report`}
+              className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-4 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+            >
+              Executive report
+            </Link>
+            <Link
+              href={`/dashboard/scans/${scan.id}/compare`}
+              className="inline-flex h-11 items-center rounded-md border border-[var(--border)] px-4 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+            >
+              Compare
+            </Link>
+            <Button variant="secondary" onClick={() => void refetch()} disabled={isFetching}>
+              {isFetching ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-5">
@@ -166,7 +188,12 @@ export function ScanDetail({ id }: { id: string }) {
                     <article key={finding.id} className="rounded-md bg-[var(--panel-muted)] p-4">
                       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <p className="font-medium">{finding.message}</p>
+                          <Link
+                            href={`/dashboard/findings/${finding.id}`}
+                            className="font-medium transition hover:text-[var(--accent)]"
+                          >
+                            {finding.message}
+                          </Link>
                           <p className="mt-1 text-xs text-[var(--muted)]">
                             {finding.tool} | {finding.category ?? finding.type} | {finding.status}
                           </p>
@@ -174,15 +201,27 @@ export function ScanDetail({ id }: { id: string }) {
                         <div className="flex flex-wrap gap-2">
                           <FindingAction
                             label="Accept"
-                            onClick={() => setStatus(finding.id, 'ACCEPTED_RISK' as FindingStatus)}
+                            onClick={() =>
+                              setStatus(finding.id, {
+                                status: FindingStatus.AcceptedRisk,
+                                reason:
+                                  'Accepted from scan detail after manual review; tracked for expiration.',
+                                acceptedUntil: acceptedUntilDefault(),
+                              })
+                            }
                           />
                           <FindingAction
                             label="False positive"
-                            onClick={() => setStatus(finding.id, 'FALSE_POSITIVE' as FindingStatus)}
+                            onClick={() =>
+                              setStatus(finding.id, {
+                                status: FindingStatus.FalsePositive,
+                                reason: 'Marked as false positive after manual evidence review.',
+                              })
+                            }
                           />
                           <FindingAction
                             label="Fixed"
-                            onClick={() => setStatus(finding.id, 'FIXED' as FindingStatus)}
+                            onClick={() => setStatus(finding.id, { status: FindingStatus.Fixed })}
                           />
                         </div>
                       </div>

@@ -72,6 +72,21 @@ type Component struct {
 	Direct     bool    `json:"direct"`
 }
 
+type Vulnerability struct {
+	ComponentName *string  `json:"componentName,omitempty"`
+	Version       *string  `json:"version,omitempty"`
+	Ecosystem     *string  `json:"ecosystem,omitempty"`
+	Source        string   `json:"source"`
+	ExternalID    string   `json:"externalId"`
+	Severity      string   `json:"severity"`
+	CVSS          *float64 `json:"cvss,omitempty"`
+	EPSS          *float64 `json:"epss,omitempty"`
+	FixedVersion  *string  `json:"fixedVersion,omitempty"`
+	Title         string   `json:"title"`
+	Description   *string  `json:"description,omitempty"`
+	URL           *string  `json:"url,omitempty"`
+}
+
 type LicenseRisk struct {
 	Component string  `json:"component"`
 	License   string  `json:"license"`
@@ -85,14 +100,15 @@ type AnalysisLog struct {
 }
 
 type AnalysisResult struct {
-	DetectedStack string         `json:"detectedStack"`
-	Findings      []Finding      `json:"findings"`
-	Logs          []AnalysisLog  `json:"logs"`
-	RawSummary    map[string]any `json:"rawSummary"`
-	ToolRuns      []ToolRun      `json:"toolRuns,omitempty"`
-	Artifacts     []Artifact     `json:"artifacts,omitempty"`
-	Components    []Component    `json:"components,omitempty"`
-	LicenseRisks  []LicenseRisk  `json:"licenseRisks,omitempty"`
+	DetectedStack   string          `json:"detectedStack"`
+	Findings        []Finding       `json:"findings"`
+	Logs            []AnalysisLog   `json:"logs"`
+	RawSummary      map[string]any  `json:"rawSummary"`
+	ToolRuns        []ToolRun       `json:"toolRuns,omitempty"`
+	Artifacts       []Artifact      `json:"artifacts,omitempty"`
+	Components      []Component     `json:"components,omitempty"`
+	Vulnerabilities []Vulnerability `json:"vulnerabilities,omitempty"`
+	LicenseRisks    []LicenseRisk   `json:"licenseRisks,omitempty"`
 }
 
 type FailAnalysisRequest struct {

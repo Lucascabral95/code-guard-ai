@@ -9,6 +9,9 @@ coverage/
 .npm-cache/
 .npm-cache-*/
 .go-cache/
+.gocache/
+**/.gocache/
+*.exe
 .docker-config/
 .vscode/
 *.tsbuildinfo

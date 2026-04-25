@@ -276,6 +276,62 @@ export class ResultLicenseRiskDto {
   policy?: string | null;
 }
 
+export class ResultVulnerabilityDto {
+  @ApiPropertyOptional({ example: 'lodash', nullable: true })
+  @IsOptional()
+  @IsString()
+  componentName?: string | null;
+
+  @ApiPropertyOptional({ example: '4.17.15', nullable: true })
+  @IsOptional()
+  @IsString()
+  version?: string | null;
+
+  @ApiPropertyOptional({ example: 'npm', nullable: true })
+  @IsOptional()
+  @IsString()
+  ecosystem?: string | null;
+
+  @ApiProperty({ example: 'trivy' })
+  @IsString()
+  source!: string;
+
+  @ApiProperty({ example: 'CVE-2024-12345' })
+  @IsString()
+  externalId!: string;
+
+  @ApiProperty({ enum: Severity, example: Severity.HIGH })
+  @IsEnum(Severity)
+  severity!: Severity;
+
+  @ApiPropertyOptional({ example: 8.8, nullable: true })
+  @IsOptional()
+  cvss?: number | null;
+
+  @ApiPropertyOptional({ example: 0.012, nullable: true })
+  @IsOptional()
+  epss?: number | null;
+
+  @ApiPropertyOptional({ example: '4.17.21', nullable: true })
+  @IsOptional()
+  @IsString()
+  fixedVersion?: string | null;
+
+  @ApiProperty({ example: 'Prototype pollution in lodash' })
+  @IsString()
+  title!: string;
+
+  @ApiPropertyOptional({ example: 'Vulnerable transitive dependency detected.', nullable: true })
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @ApiPropertyOptional({ example: 'https://avd.aquasec.com/nvd/cve-2024-12345', nullable: true })
+  @IsOptional()
+  @IsString()
+  url?: string | null;
+}
+
 export class CompleteAnalysisResultDto {
   @ApiPropertyOptional({ example: 'node', nullable: true })
   @IsOptional()
@@ -326,4 +382,11 @@ export class CompleteAnalysisResultDto {
   @ValidateNested({ each: true })
   @Type(() => ResultLicenseRiskDto)
   licenseRisks?: ResultLicenseRiskDto[];
+
+  @ApiPropertyOptional({ type: () => [ResultVulnerabilityDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ResultVulnerabilityDto)
+  vulnerabilities?: ResultVulnerabilityDto[];
 }

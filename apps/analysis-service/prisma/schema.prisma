@@ -52,6 +52,7 @@ enum FindingStatus {
   ACCEPTED_RISK
   FALSE_POSITIVE
   FIXED
+  REOPENED
 }
 
 enum ToolRunStatus {
@@ -60,6 +61,7 @@ enum ToolRunStatus {
   COMPLETED
   FAILED
   SKIPPED
+  TIMED_OUT
 }
 
 enum ArtifactKind {
