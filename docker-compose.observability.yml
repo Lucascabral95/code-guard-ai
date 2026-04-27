@@ -1,0 +1,100 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - '${PROMETHEUS_PORT:-9090}:9090'
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - api-gateway
+      - analysis-service
+      - analyzer-worker
+      - redis-exporter
+      - postgres-exporter
+      - cadvisor
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - '${GRAFANA_PORT:-3003}:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ['-config.file=/etc/loki/loki.yml']
+    ports:
+      - '${LOKI_PORT:-3100}:3100'
+    volumes:
+      - ./infra/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    command: ['-config.file=/etc/promtail/promtail.yml']
+    volumes:
+      - ./infra/observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    ports:
+      - '8080:8080'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - '9121:9121'
+    depends_on:
+      - redis
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-codeguard}:${POSTGRES_PASSWORD:-codeguard}@postgres:5432/${POSTGRES_DB:-codeguard}?sslmode=disable
+    ports:
+      - '9187:9187'
+    depends_on:
+      - postgres
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    profiles: ['linux-host']
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    ports:
+      - '9100:9100'
+    volumes:
+      - /:/host:ro,rslave
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:

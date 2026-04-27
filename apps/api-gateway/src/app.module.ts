@@ -6,6 +6,7 @@ import { AnalysisServiceClient } from './clients/analysis-service.client';
 import { AnalysesModule } from './modules/analyses/analyses.module';
 import { HealthModule } from './modules/health/health.module';
 import { EnterpriseModule } from './modules/enterprise/enterprise.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
       },
     ]),
     HealthModule,
+    MetricsModule,
     AnalysesModule,
     EnterpriseModule,
   ],

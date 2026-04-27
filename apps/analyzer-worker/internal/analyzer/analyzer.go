@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/config"
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/sandbox"
@@ -43,11 +44,15 @@ func (analyzer Analyzer) Run(ctx context.Context, job contracts.AnalysisJob) (co
 		}
 	}()
 
+	cloneStartedAt := time.Now()
 	if err := CloneRepository(ctx, job.RepoURL, job.Branch, repoPath, analyzer.config.CloneTimeout); err != nil {
 		return contracts.AnalysisResult{}, err
 	}
+	cloneDurationMs := int(time.Since(cloneStartedAt).Milliseconds())
 
+	detectStartedAt := time.Now()
 	stack := DetectStack(repoPath)
+	detectDurationMs := int(time.Since(detectStartedAt).Milliseconds())
 	metadata := RepositoryMetadata{
 		AnalysisID: job.AnalysisID,
 		ScanID:     job.ScanID,
@@ -72,6 +77,16 @@ func (analyzer Analyzer) Run(ctx context.Context, job contracts.AnalysisJob) (co
 		infoLog("Repository cloned successfully"),
 		infoLog("Detected stack: " + stack),
 	}, result.Logs...)
+	result.ToolRuns = append([]contracts.ToolRun{
+		{
+			Tool:       "git",
+			Stage:      string(StageClone),
+			Status:     toolRunStatusCompleted,
+			DurationMs: intPointer(cloneDurationMs),
+			Summary:    stringPointer("Repository cloned successfully."),
+		},
+	}, result.ToolRuns...)
+	result.ToolRuns = ensureDetectDuration(result.ToolRuns, detectDurationMs)
 	result.DetectedStack = stack
 	return result, nil
 }
@@ -173,4 +188,23 @@ func (analyzer Analyzer) pluginsForStack(stack string) []AnalyzerPlugin {
 	}
 
 	return plugins
+}
+
+func ensureDetectDuration(toolRuns []contracts.ToolRun, durationMs int) []contracts.ToolRun {
+	for index := range toolRuns {
+		if toolRuns[index].Tool == "stack-detector" && toolRuns[index].Stage == string(StageDetect) {
+			toolRuns[index].DurationMs = intPointer(durationMs)
+			return toolRuns
+		}
+	}
+
+	return append([]contracts.ToolRun{
+		{
+			Tool:       "stack-detector",
+			Stage:      string(StageDetect),
+			Status:     toolRunStatusCompleted,
+			DurationMs: intPointer(durationMs),
+			Summary:    stringPointer("Repository stack detected without executing repository code."),
+		},
+	}, toolRuns...)
 }
