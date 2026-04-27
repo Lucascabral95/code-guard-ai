@@ -20,6 +20,8 @@
 - [Estado actual del sistema](#estado-actual-del-sistema)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Catalogo de microservicios](#catalogo-de-microservicios)
+- [Analisis de repositorios](#analisis-de-repositorios)
+- [Reportes y visualizaciones](#reportes-y-visualizaciones)
 - [API publica del gateway](#api-publica-del-gateway)
 - [Swagger / API Docs](#swagger--api-docs)
 - [Observabilidad](#observabilidad)
@@ -47,6 +49,8 @@ consolida resultados. El `analyzer-worker` en Go consume Redis Streams, clona re
 - Worker Go con validacion de URL GitHub, timeout de clone y limpieza de temporales.
 - `SAFE_ANALYSIS_MODE=true` por defecto (no ejecuta codigo externo en host).
 - Modelo enterprise en Prisma para proyectos, scans, findings, artifacts, componentes y snapshots de riesgo.
+- Analisis extra de postura: CI/CD, repo hygiene, Docker/IaC, package health, license policy y OpenSSF Scorecard.
+- Reportes ejecutivos con graficos operativos y descarga PDF desde el dashboard.
 - Swagger en `api-gateway` y `analysis-service`.
 - CI profesional (lint, format, tests, builds, Prisma migrations y Docker builds).
 - Docker Compose para stack local completo.
@@ -71,9 +75,11 @@ Flujos implementados de punta a punta:
 - clone de repositorio publico GitHub
 - deteccion de stack
 - safe analysis con findings normalizados
+- analisis local seguro de GitHub Actions, Dockerfiles, Compose, package.json, licencias y hygiene del repo
+- scanners reales opcionales en sandbox Docker para Semgrep, Trivy, OSV, Gitleaks y OpenSSF Scorecard
 - callback de resultado/fallo al analysis-service
 - persistencia en PostgreSQL
-- consulta de portfolio, proyectos, scans, findings y artifacts
+- consulta de portfolio, proyectos, scans, findings, artifacts, SBOM, reportes y PDF
 
 ## Estructura del proyecto
 
@@ -116,7 +122,7 @@ codeguard-ai/
 - Rol:
   - dashboard operativo
   - creacion de analisis y scans
-  - visualizacion de findings, score, artifacts y reportes
+  - visualizacion de findings, score, artifacts, graficos y reportes PDF
 
 ### API Gateway
 
@@ -148,6 +154,52 @@ codeguard-ai/
   - clonar y analizar repositorios
   - devolver resultados normalizados por endpoint interno
 
+## Analisis de repositorios
+
+CodeGuard AI combina checks seguros por lectura de archivos con scanners reales opcionales en sandbox Docker.
+
+Modo seguro por defecto:
+
+- `ci-posture`: inspecciona `.github/workflows` para `pull_request_target`, permisos `write-all`, actions sin pin SHA y secretos inline.
+- `repo-hygiene`: detecta ausencia de `SECURITY.md`, `CODEOWNERS`, `dependabot.yml` y `LICENSE`.
+- `dockerfile-posture`: revisa Dockerfile/Compose para `latest`, falta de usuario no-root, falta de healthcheck, `privileged`, Docker socket y mounts sensibles.
+- `package-health`: revisa `package.json`, package manager, lockfiles, scripts de instalacion, engines, workspaces y rangos peligrosos.
+- `license-policy`: clasifica riesgos de licencias AGPL/GPL/LGPL/SSPL/BUSL/Commons Clause/unknown.
+- `scorecard-safe`: aproxima postura tipo OpenSSF sin llamadas externas.
+
+Modo scanners reales con `make up-scanners`:
+
+- `semgrep`: SAST con salida normalizada.
+- `trivy`: vulnerabilidades, secretos, misconfigurations, licencias y SBOM CycloneDX.
+- `osv-scanner`: vulnerabilidades de dependencias y fixed versions.
+- `gitleaks`: deteccion especializada de secretos.
+- `scorecard`: OpenSSF Scorecard real en Docker sandbox.
+
+Regla de seguridad:
+
+- `SAFE_ANALYSIS_MODE=true` no ejecuta codigo del repo.
+- `SAFE_ANALYSIS_MODE=false` ejecuta herramientas externas solo dentro de Docker sandbox mediante `DockerExecutor.RunTool`.
+
+## Reportes y visualizaciones
+
+El frontend muestra informes mas visuales para cada scan:
+
+- donut de severidad
+- donut de categorias
+- barras de cobertura de herramientas
+- barras de vulnerabilidades por ecosistema
+- donut de distribucion de licencias
+- barras de prioridad de remediacion
+- barras de duracion por herramienta
+- resumen de postura CI/CD, repositorio y Docker/IaC
+- SBOM summary, license risk y top findings
+
+Reportes descargables:
+
+- `GET /scans/:id/report` devuelve el reporte Markdown/JSON.
+- `GET /scans/:id/report/executive` devuelve el payload enriquecido para UI.
+- `GET /scans/:id/report.pdf` descarga un PDF ejecutivo generado server-side.
+
 ## API publica del gateway
 
 Base URL local:
@@ -171,8 +223,14 @@ Rutas actuales:
 - `GET /scans/:id/artifacts`
 - `GET /scans/:id/sbom`
 - `GET /scans/:id/report`
+- `GET /scans/:id/report/executive`
+- `GET /scans/:id/report.pdf`
+- `GET /scans/:id/remediation-plan`
+- `GET /scans/:id/compare/:previousScanId`
+- `GET /projects/:id/risk-history`
 - `POST /findings/:id/status`
 - `GET /dashboard/portfolio-risk`
+- `GET /dashboard/remediation`
 
 Ejemplos:
 
@@ -232,13 +290,29 @@ Nota:
 Estado actual:
 
 - healthchecks en Docker Compose para `postgres`, `redis`, `analysis-service` y `api-gateway`
-- logs de servicios disponibles via `docker compose logs`
-- estructura `infra/observability/` preparada para Prometheus/Grafana/Loki
+- endpoint `/metrics` en `api-gateway`, `analysis-service` y `analyzer-worker`
+- stack opcional con Prometheus, Grafana, Loki, Promtail, cAdvisor, Redis exporter y Postgres exporter
+- dashboard Grafana provisionado: `CodeGuard AI Operations Overview`
+- logs centralizados en Loki mediante Promtail
 
-Aun no implementado en runtime local por defecto:
+Comandos:
 
-- stack completo de metricas, alertas y logs centralizados
-- OpenTelemetry traces
+```bash
+make up-observability
+make down-observability
+make logs-observability
+```
+
+URLs locales:
+
+- Grafana: `http://localhost:3003`
+- Prometheus: `http://localhost:9090`
+- Loki: `http://localhost:3100`
+
+Pendiente:
+
+- alertas con Alertmanager
+- OpenTelemetry traces distribuidos
 
 ## Testing y calidad
 
@@ -336,6 +410,11 @@ Variables destacadas:
 - `INTERNAL_SECRET`
 - `SAFE_ANALYSIS_MODE`
 - `SANDBOX_ANALYSIS_MODE`
+- `SEMGREP_IMAGE`
+- `TRIVY_IMAGE`
+- `OSV_SCANNER_IMAGE`
+- `GITLEAKS_IMAGE`
+- `SCORECARD_IMAGE`
 - `OLLAMA_ENABLED`
 - `OLLAMA_BASE_URL`
 
@@ -351,7 +430,9 @@ Flujo manual recomendado:
 
 1. crear analisis desde `/dashboard/analyses/new`
 2. esperar consumo del worker
-3. abrir detalle de scan para revisar findings, score y summary
+3. abrir detalle de scan para revisar findings, score, summary y graficos
+4. abrir el executive report desde el detalle del scan
+5. descargar el PDF con `Download PDF`
 
 ## Documentacion tecnica
 
@@ -369,11 +450,11 @@ Flujo manual recomendado:
 
 ## Roadmap
 
-- ejecutar scanners reales en sandbox Docker (`SAFE_ANALYSIS_MODE=false`)
-- integrar Semgrep/Trivy/OSV/Scorecard con normalizacion enterprise
-- agregar policy engine configurable
+- agregar export SARIF descargable desde UI
+- agregar PDF con graficos vectoriales mas avanzados y portada brand-ready
+- mejorar comparacion visual entre scans
 - implementar auth multi-workspace (users/roles/API keys)
-- incorporar observabilidad completa (Prometheus/Grafana/Loki + traces)
+- agregar alertas sobre observabilidad (Prometheus Alertmanager)
 - preparar despliegue productivo en AWS ECS Fargate con Terraform
 
 ## Contribuciones

@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -69,16 +70,21 @@ func (safeAnalyzer SafeAnalyzer) Analyze(repoPath string, stack string) contract
 		toolRuns = append(toolRuns, skippedToolRun("node-quality", "quality", "Node.js quality checks skipped because package.json was not detected."))
 	}
 
-	repositoryFindings, repositoryToolRuns, repositorySummary := safeAnalyzer.analyzeRepositoryPosture(repoPath)
+	repositoryFindings, repositoryToolRuns, repositoryArtifacts, repositorySummary := safeAnalyzer.analyzeRepositoryPosture(repoPath)
 	findings = append(findings, repositoryFindings...)
 	toolRuns = append(toolRuns, repositoryToolRuns...)
+	artifacts = append(artifacts, repositoryArtifacts...)
 	for key, value := range repositorySummary {
 		rawSummary[key] = value
 	}
 
+	findings = dedupeFindings(findings)
+	components = dedupeComponents(components)
+	licenseRisks = dedupeLicenseRisks(licenseRisks)
 	rawSummary["securityIssues"] = countSecurityFindings(findings)
 	rawSummary["componentsDetected"] = len(components)
 	rawSummary["licenseRiskCount"] = len(licenseRisks)
+	rawSummary["toolCoverage"] = summarizeToolCoverage(toolRuns)
 
 	logs = append(logs, infoLog("Safe analysis produced normalized enterprise evidence"))
 	return contracts.AnalysisResult{
@@ -258,13 +264,14 @@ func (safeAnalyzer SafeAnalyzer) analyzeNode(repoPath string) nodeSafeResult {
 	}
 }
 
-func (safeAnalyzer SafeAnalyzer) analyzeRepositoryPosture(repoPath string) ([]contracts.Finding, []contracts.ToolRun, map[string]any) {
+func (safeAnalyzer SafeAnalyzer) analyzeRepositoryPosture(repoPath string) ([]contracts.Finding, []contracts.ToolRun, []contracts.Artifact, map[string]any) {
 	findings := []contracts.Finding{}
 	toolRuns := []contracts.ToolRun{
 		completedToolRun("semgrep-safe", "sast", "Safe static heuristics inspected repository text files without executing code."),
 		completedToolRun("trivy-safe", "iac", "Docker, Compose, Terraform, Kubernetes and GitHub Actions posture inspected in safe mode."),
 		completedToolRun("scorecard-safe", "scorecard", "OpenSSF Scorecard-style repository posture checks were approximated offline."),
 	}
+	artifacts := []contracts.Artifact{}
 	summary := map[string]any{}
 
 	secretFindings := safeAnalyzer.secretFindings(repoPath)
@@ -279,7 +286,35 @@ func (safeAnalyzer SafeAnalyzer) analyzeRepositoryPosture(repoPath string) ([]co
 	findings = append(findings, scorecardFindings...)
 	summary["scorecardWarnings"] = len(scorecardFindings)
 
-	return findings, toolRuns, summary
+	for _, plugin := range []AnalyzerPlugin{
+		NewCIPosturePlugin(),
+		NewRepoHygienePlugin(),
+		NewDockerfilePosturePlugin(),
+		NewLicensePolicyPlugin(),
+		NewPackageHealthPlugin(),
+	} {
+		runResult, err := plugin.Run(context.Background(), repoPath, RepositoryMetadata{
+			Stack:    DetectStack(repoPath),
+			SafeMode: true,
+		})
+		if err != nil {
+			toolRuns = append(toolRuns, failedToolRun(plugin.Name(), string(plugin.Stage()), "Safe local posture plugin failed", err.Error()))
+			continue
+		}
+		normalized, err := plugin.Normalize(runResult)
+		if err != nil {
+			toolRuns = append(toolRuns, failedToolRun(plugin.Name(), string(plugin.Stage()), "Safe local posture normalization failed", err.Error()))
+			continue
+		}
+		findings = append(findings, normalized.Findings...)
+		toolRuns = append(toolRuns, normalized.ToolRuns...)
+		artifacts = append(artifacts, normalized.Artifacts...)
+		for key, value := range normalized.RawSummary {
+			summary[key] = value
+		}
+	}
+
+	return findings, toolRuns, artifacts, summary
 }
 
 func (safeAnalyzer SafeAnalyzer) secretFindings(repoPath string) []contracts.Finding {
@@ -508,12 +543,8 @@ func componentFromDependency(name string, version string, direct bool) contracts
 
 func licenseRisksFromManifest(manifest PackageJSON) []contracts.LicenseRisk {
 	license := normalizedLicense(manifest.License)
-	if license == "" {
-		return nil
-	}
-
-	upper := strings.ToUpper(license)
-	if !strings.Contains(upper, "GPL") && !strings.Contains(upper, "AGPL") {
+	risks := classifyLicenseRisk(license)
+	if len(risks) == 0 {
 		return nil
 	}
 
@@ -522,14 +553,16 @@ func licenseRisksFromManifest(manifest PackageJSON) []contracts.LicenseRisk {
 		component = "root-package"
 	}
 
-	return []contracts.LicenseRisk{
-		{
+	items := make([]contracts.LicenseRisk, 0, len(risks))
+	for _, risk := range risks {
+		items = append(items, contracts.LicenseRisk{
 			Component: component,
-			License:   license,
-			Risk:      "Copyleft license detected; validate compatibility with distribution model.",
-			Policy:    stringPointer("review-copyleft-licenses"),
-		},
+			License:   firstNonEmpty(license, "UNLICENSED_OR_UNKNOWN"),
+			Risk:      risk.message,
+			Policy:    stringPointer(risk.policy),
+		})
 	}
+	return items
 }
 
 func detectPackageManager(repoPath string) string {
@@ -699,6 +732,26 @@ func countSecurityFindings(findings []contracts.Finding) int {
 		}
 	}
 	return count
+}
+
+func summarizeToolCoverage(toolRuns []contracts.ToolRun) map[string]int {
+	coverage := map[string]int{
+		"enabled":   len(toolRuns),
+		"completed": 0,
+		"failed":    0,
+		"skipped":   0,
+	}
+	for _, toolRun := range toolRuns {
+		switch toolRun.Status {
+		case toolRunStatusCompleted:
+			coverage["completed"]++
+		case toolRunStatusFailed, toolRunStatusTimedOut:
+			coverage["failed"]++
+		case toolRunStatusSkipped:
+			coverage["skipped"]++
+		}
+	}
+	return coverage
 }
 
 func fingerprint(parts ...string) string {

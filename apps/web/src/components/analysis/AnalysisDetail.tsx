@@ -47,7 +47,7 @@ export function AnalysisDetail({ id }: { id: string }) {
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           <Metric label="Status" value={<StatusBadge status={analysis.status} />} />
           <Metric label="Risk Level" value={<RiskBadge level={analysis.riskLevel} />} />
-          <Metric label="Risk Score" value={`${analysis.riskScore ?? '--'}/100`} />
+          <Metric label="Health Score" value={`${analysis.riskScore ?? '--'}/100`} />
           <Metric
             label="Completed"
             value={

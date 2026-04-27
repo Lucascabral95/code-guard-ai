@@ -13,6 +13,8 @@ type PackageJSON struct {
 	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"devDependencies"`
 	Engines         map[string]string `json:"engines"`
+	PackageManager  string            `json:"packageManager"`
+	Workspaces      any               `json:"workspaces"`
 	License         any               `json:"license"`
 }
 

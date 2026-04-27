@@ -66,7 +66,7 @@ export function ProjectDetail({ id }: { id: string }) {
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           <Metric label="Risk Level" value={<RiskBadge level={data.project.riskLevel} />} />
-          <Metric label="Risk Score" value={`${data.project.riskScore ?? '--'}/100`} />
+          <Metric label="Health Score" value={`${data.project.riskScore ?? '--'}/100`} />
           <Metric label="Scans" value={data.scans.length} />
           <Metric label="Default Branch" value={defaultBranch} />
         </div>

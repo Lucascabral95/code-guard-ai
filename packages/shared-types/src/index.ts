@@ -458,6 +458,48 @@ export interface ExecutiveReportResponse {
   };
   businessImpact: string;
   recommendedNextSteps: string[];
+  charts: {
+    severity: Array<{ label: string; count: number }>;
+    categories: Array<{ label: string; count: number }>;
+    tools: Array<{ label: string; count: number }>;
+    vulnerabilityEcosystems: Array<{ label: string; count: number }>;
+    licenses: Array<{ label: string; count: number }>;
+    remediationPriority: Array<{ label: string; count: number }>;
+    toolDuration: Array<{ label: string; value: number }>;
+  };
+  coverage: {
+    toolsEnabled: number;
+    toolsCompleted: number;
+    toolsFailed: number;
+    toolsSkipped: number;
+  };
+  posture: {
+    ciCd: ReportPostureSection;
+    repository: ReportPostureSection;
+    dockerIac: ReportPostureSection;
+  };
+  repositoryHealth: {
+    postureFindings: number;
+    policyFailures: number;
+    policyWarnings: number;
+    componentsDetected: number;
+    licenseRisks: number;
+  };
+  toolCoverage: Array<{ tool: string; stage: string; status: string; durationMs: number | null }>;
+  vulnerabilityBreakdown: Array<{ ecosystem: string; count: number }>;
+  licenseBreakdown: Array<{ license: string; count: number; riskCount: number }>;
+  remediationStats: {
+    totalActionable: number;
+    priorityOne: number;
+    priorityTwo: number;
+    priorityThreePlus: number;
+  };
+}
+
+export interface ReportPostureSection {
+  status: 'PASS' | 'WARN' | 'FAIL';
+  findings: number;
+  summary: string;
 }
 
 export interface RemediationPlanResponse {

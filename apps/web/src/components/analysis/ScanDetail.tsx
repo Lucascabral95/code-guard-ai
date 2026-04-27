@@ -3,10 +3,19 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { useScan, useUpdateFindingStatus } from '@/features/analyses/hooks';
+import {
+  useDownloadScanReportPdf,
+  useScan,
+  useUpdateFindingStatus,
+} from '@/features/analyses/hooks';
 import { FindingStatus } from '@/features/analyses/types';
-import type { Finding, UpdateFindingStatusRequest } from '@/features/analyses/types';
-import { CategoryBars, SeverityBars } from './EnterpriseCharts';
+import type {
+  Component,
+  Finding,
+  ToolRun,
+  UpdateFindingStatusRequest,
+} from '@/features/analyses/types';
+import { ReportBarChart, ReportDonutChart, ToolDurationChart } from './EnterpriseCharts';
 import { Button } from '../ui/Button';
 import { RiskBadge } from '../ui/RiskBadge';
 import { StatusBadge } from '../ui/StatusBadge';
@@ -16,10 +25,17 @@ const severityOrder = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 export function ScanDetail({ id }: { id: string }) {
   const { data, isLoading, isError, refetch, isFetching } = useScan(id);
   const updateStatus = useUpdateFindingStatus(id);
+  const downloadPdf = useDownloadScanReportPdf();
 
   const groupedFindings = useMemo(() => groupFindings(data?.findings ?? []), [data?.findings]);
   const severityTotals = useMemo(() => totalsFor(data?.findings ?? []), [data?.findings]);
   const categoryTotals = useMemo(() => categoriesFor(data?.findings ?? []), [data?.findings]);
+  const toolStatusTotals = useMemo(() => toolStatusesFor(data?.toolRuns ?? []), [data?.toolRuns]);
+  const vulnerabilityEcosystems = useMemo(
+    () => vulnerabilitiesByEcosystem(data?.components ?? []),
+    [data?.components],
+  );
+  const licenseTotals = useMemo(() => licensesFor(data?.components ?? []), [data?.components]);
 
   if (isLoading) {
     return <div className="rounded-md border border-[var(--border)] p-6">Loading scan...</div>;
@@ -72,6 +88,13 @@ export function ScanDetail({ id }: { id: string }) {
             >
               Compare
             </Link>
+            <Button
+              variant="secondary"
+              onClick={() => downloadPdf.mutate(scan.id)}
+              disabled={downloadPdf.isPending}
+            >
+              {downloadPdf.isPending ? 'Preparing PDF...' : 'Download PDF'}
+            </Button>
             <Button variant="secondary" onClick={() => void refetch()} disabled={isFetching}>
               {isFetching ? 'Refreshing...' : 'Refresh'}
             </Button>
@@ -81,7 +104,7 @@ export function ScanDetail({ id }: { id: string }) {
         <div className="mt-6 grid gap-4 md:grid-cols-5">
           <Metric label="Status" value={<StatusBadge status={scan.status} />} />
           <Metric label="Risk Level" value={<RiskBadge level={scan.riskLevel} />} />
-          <Metric label="Risk Score" value={`${scan.riskScore ?? '--'}/100`} />
+          <Metric label="Health Score" value={`${scan.riskScore ?? '--'}/100`} />
           <Metric label="Stack" value={scan.detectedStack ?? 'pending'} />
           <Metric
             label="Completed"
@@ -105,10 +128,24 @@ export function ScanDetail({ id }: { id: string }) {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Panel title="Severity Distribution">
-          <SeverityBars totals={severityTotals} />
+          <ReportDonutChart data={severityChartData(severityTotals)} />
         </Panel>
         <Panel title="Finding Categories">
-          <CategoryBars data={categoryTotals} />
+          <ReportDonutChart
+            data={categoryTotals.map((item) => ({ label: item.category, count: item.count }))}
+          />
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <Panel title="Tool Coverage">
+          <ReportBarChart data={toolStatusTotals} />
+        </Panel>
+        <Panel title="Vulnerabilities By Ecosystem">
+          <ReportBarChart data={vulnerabilityEcosystems} />
+        </Panel>
+        <Panel title="License Distribution">
+          <ReportDonutChart data={licenseTotals} />
         </Panel>
       </section>
 
@@ -132,6 +169,16 @@ export function ScanDetail({ id }: { id: string }) {
             )}
           </div>
         </Panel>
+        <Panel title="Tool Duration">
+          <ToolDurationChart
+            data={data.toolRuns
+              .filter((toolRun) => toolRun.durationMs != null)
+              .map((toolRun) => ({ label: toolRun.tool, value: toolRun.durationMs ?? 0 }))}
+          />
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
         <Panel title="SBOM Inventory">
           <div className="grid gap-2">
             {data.components.length === 0 ? (
@@ -324,4 +371,46 @@ function categoriesFor(findings: Finding[]) {
   }, {});
 
   return Object.entries(counts).map(([category, count]) => ({ category, count }));
+}
+
+function severityChartData(totals: ReturnType<typeof totalsFor>) {
+  return [
+    { label: 'Critical', count: totals.critical },
+    { label: 'High', count: totals.high },
+    { label: 'Medium', count: totals.medium },
+    { label: 'Low', count: totals.low },
+    { label: 'Info', count: totals.info },
+  ].filter((item) => item.count > 0);
+}
+
+function toolStatusesFor(toolRuns: ToolRun[]) {
+  const counts = toolRuns.reduce<Record<string, number>>((accumulator, toolRun) => {
+    accumulator[toolRun.status] = (accumulator[toolRun.status] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  return Object.entries(counts).map(([label, count]) => ({ label, count }));
+}
+
+function vulnerabilitiesByEcosystem(components: Component[]) {
+  const counts = components.reduce<Record<string, number>>((accumulator, component) => {
+    const vulnerabilities = component.vulnerabilities?.length ?? 0;
+    if (vulnerabilities === 0) {
+      return accumulator;
+    }
+    const ecosystem = component.ecosystem ?? 'unknown';
+    accumulator[ecosystem] = (accumulator[ecosystem] ?? 0) + vulnerabilities;
+    return accumulator;
+  }, {});
+  return Object.entries(counts).map(([label, count]) => ({ label, count }));
+}
+
+function licensesFor(components: Component[]) {
+  const counts = components.reduce<Record<string, number>>((accumulator, component) => {
+    if (!component.license) {
+      return accumulator;
+    }
+    accumulator[component.license] = (accumulator[component.license] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  return Object.entries(counts).map(([label, count]) => ({ label, count }));
 }

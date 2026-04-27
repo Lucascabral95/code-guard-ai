@@ -167,16 +167,23 @@ func (analyzer Analyzer) runSandboxAnalysis(
 	result.RawSummary["componentsDetected"] = len(result.Components)
 	result.RawSummary["licenseRiskCount"] = len(result.LicenseRisks)
 	result.RawSummary["toolRunsCompleted"] = len(result.ToolRuns)
+	result.RawSummary["toolCoverage"] = summarizeToolCoverage(result.ToolRuns)
 	result.Logs = append(result.Logs, infoLog("Sandbox analysis completed with normalized evidence"))
 	return result, nil
 }
 
 func (analyzer Analyzer) pluginsForStack(stack string) []AnalyzerPlugin {
 	plugins := []AnalyzerPlugin{
+		NewCIPosturePlugin(),
+		NewRepoHygienePlugin(),
+		NewDockerfilePosturePlugin(),
+		NewLicensePolicyPlugin(),
+		NewPackageHealthPlugin(),
 		NewSemgrepPlugin(analyzer.dockerExecutor, analyzer.config.SemgrepImage),
 		NewTrivyFindingsPlugin(analyzer.dockerExecutor, analyzer.config.TrivyImage),
 		NewTrivySBOMPlugin(analyzer.dockerExecutor, analyzer.config.TrivyImage),
 		NewGitleaksPlugin(analyzer.dockerExecutor, analyzer.config.GitleaksImage),
+		NewScorecardPlugin(analyzer.dockerExecutor, analyzer.config.ScorecardImage),
 	}
 
 	if stack == "node" {

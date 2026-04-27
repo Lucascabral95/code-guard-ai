@@ -5,6 +5,7 @@ import {
   createProject,
   createScan,
   compareScans,
+  downloadScanReportPdf,
   getAnalysis,
   getExecutiveReport,
   getFinding,
@@ -118,6 +119,12 @@ export function useExecutiveReport(id: string) {
   return useQuery({
     queryKey: ['scan-executive-report', id],
     queryFn: () => getExecutiveReport(id),
+  });
+}
+
+export function useDownloadScanReportPdf() {
+  return useMutation({
+    mutationFn: (id: string) => downloadScanReportPdf(id),
   });
 }
 
