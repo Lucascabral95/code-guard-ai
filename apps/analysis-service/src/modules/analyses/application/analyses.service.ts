@@ -679,13 +679,86 @@ export class AnalysesService {
         kind: ArtifactKind.MARKDOWN_REPORT,
         name: 'executive-report.md',
         contentType: 'text/markdown',
-        content: this.toJson({
-          markdown: [`# CodeGuard AI Report`, '', summary, '', `Findings: ${findings.length}`].join(
-            '\n',
-          ),
-        }),
+        content: this.toJson({ markdown: this.buildMarkdownReport(summary, findings, dto) }),
       },
     ];
+  }
+
+  private buildMarkdownReport(
+    summary: string,
+    findings: FindingForSummary[],
+    dto: CompleteAnalysisResultDto,
+  ) {
+    const severity = this.countSeverities(findings);
+    const toolRuns = dto.toolRuns ?? [];
+    const components = dto.components ?? [];
+    const licenseRisks = dto.licenseRisks ?? [];
+    const topFindings = [...findings]
+      .sort(
+        (left, right) => this.severityWeight(right.severity) - this.severityWeight(left.severity),
+      )
+      .slice(0, 10);
+
+    return [
+      '# CodeGuard AI Report',
+      '',
+      '## Executive Summary',
+      '',
+      summary,
+      '',
+      '## Risk Evidence',
+      '',
+      `- Findings: ${findings.length}`,
+      `- Critical: ${severity.critical}`,
+      `- High: ${severity.high}`,
+      `- Medium: ${severity.medium}`,
+      `- Low: ${severity.low}`,
+      `- Info: ${severity.info}`,
+      `- Components detected: ${components.length}`,
+      `- License risks: ${licenseRisks.length}`,
+      '',
+      '## Tool Runs',
+      '',
+      ...(toolRuns.length
+        ? toolRuns.map(
+            (toolRun) =>
+              `- ${toolRun.tool} (${toolRun.stage}): ${toolRun.status}${toolRun.durationMs ? ` in ${toolRun.durationMs}ms` : ''}`,
+          )
+        : ['- No tool runs recorded.']),
+      '',
+      '## Top Findings',
+      '',
+      ...(topFindings.length
+        ? topFindings.map(
+            (finding) =>
+              `- [${finding.severity}] ${finding.message} (${finding.tool}${finding.category ? ` / ${finding.category}` : ''})`,
+          )
+        : ['- No actionable findings detected.']),
+      '',
+      '## Remediation Guidance',
+      '',
+      ...(topFindings.length
+        ? topFindings.map(
+            (finding, index) =>
+              `${index + 1}. ${finding.recommendation ?? 'Review the evidence and assign an owner.'}`,
+          )
+        : ['1. Keep scheduled scans running and compare risk over time.']),
+    ].join('\n');
+  }
+
+  private severityWeight(severity: Severity) {
+    switch (severity) {
+      case Severity.CRITICAL:
+        return 5;
+      case Severity.HIGH:
+        return 4;
+      case Severity.MEDIUM:
+        return 3;
+      case Severity.LOW:
+        return 2;
+      default:
+        return 1;
+    }
   }
 
   private toJson(value: unknown): Prisma.InputJsonValue {

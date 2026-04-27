@@ -2,13 +2,23 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { useExecutiveReport, useRemediationPlan } from '@/features/analyses/hooks';
-import { CategoryBars, SeverityBars } from './EnterpriseCharts';
+import {
+  useDownloadScanReportPdf,
+  useExecutiveReport,
+  useRemediationPlan,
+} from '@/features/analyses/hooks';
+import {
+  PostureSummary,
+  ReportBarChart,
+  ReportDonutChart,
+  ToolDurationChart,
+} from './EnterpriseCharts';
 import { RiskBadge } from '../ui/RiskBadge';
 
 export function ExecutiveReport({ id }: { id: string }) {
   const report = useExecutiveReport(id);
   const remediation = useRemediationPlan(id);
+  const downloadPdf = useDownloadScanReportPdf();
 
   if (report.isLoading || remediation.isLoading) {
     return <div className="rounded-md border border-[var(--border)] p-6">Loading report...</div>;
@@ -40,11 +50,19 @@ export function ExecutiveReport({ id }: { id: string }) {
           >
             Back to scan
           </Link>
+          <button
+            type="button"
+            onClick={() => downloadPdf.mutate(id)}
+            disabled={downloadPdf.isPending}
+            className="inline-flex h-11 items-center rounded-md border border-[var(--accent)] px-4 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--accent)] hover:text-[#061016] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {downloadPdf.isPending ? 'Preparing PDF...' : 'Download PDF'}
+          </button>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           <Metric label="Risk Level" value={<RiskBadge level={data.risk.level} />} />
-          <Metric label="Risk Score" value={`${data.risk.score ?? '--'}/100`} />
+          <Metric label="Health Score" value={`${data.risk.score ?? '--'}/100`} />
           <Metric label="Open Findings" value={data.risk.openFindings} />
           <Metric label="Critical + High" value={data.risk.criticalAndHigh} />
         </div>
@@ -52,21 +70,40 @@ export function ExecutiveReport({ id }: { id: string }) {
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <Panel title="Severity">
-          <SeverityBars
-            totals={{
-              projects: 0,
-              scans: 0,
-              openFindings: data.risk.openFindings,
-              critical: data.severity.CRITICAL,
-              high: data.severity.HIGH,
-              medium: data.severity.MEDIUM,
-              low: data.severity.LOW,
-              info: data.severity.INFO,
-            }}
-          />
+          <ReportDonutChart data={data.charts.severity} />
         </Panel>
         <Panel title="Categories">
-          <CategoryBars data={data.categories} />
+          <ReportDonutChart data={data.charts.categories} />
+        </Panel>
+      </section>
+
+      <Panel title="Repository Posture">
+        <PostureSummary posture={data.posture} />
+      </Panel>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <Panel title="Tool Coverage">
+          <div className="grid gap-3 text-sm">
+            <MiniMetric label="Enabled" value={data.coverage.toolsEnabled} />
+            <MiniMetric label="Completed" value={data.coverage.toolsCompleted} />
+            <MiniMetric label="Failed" value={data.coverage.toolsFailed} />
+            <MiniMetric label="Skipped" value={data.coverage.toolsSkipped} />
+          </div>
+        </Panel>
+        <Panel title="Vulnerabilities By Ecosystem">
+          <ReportBarChart data={data.charts.vulnerabilityEcosystems} />
+        </Panel>
+        <Panel title="License Risk">
+          <ReportDonutChart data={data.charts.licenses} />
+        </Panel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Tool Duration">
+          <ToolDurationChart data={data.charts.toolDuration} />
+        </Panel>
+        <Panel title="Remediation Priority">
+          <ReportBarChart data={data.charts.remediationPriority} />
         </Panel>
       </section>
 

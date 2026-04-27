@@ -29,6 +29,7 @@ type Config struct {
 	TrivyImage              string
 	OSVScannerImage         string
 	GitleaksImage           string
+	ScorecardImage          string
 }
 
 func Load() Config {
@@ -55,6 +56,7 @@ func Load() Config {
 		TrivyImage:              getEnv("TRIVY_IMAGE", "aquasec/trivy:latest"),
 		OSVScannerImage:         getEnv("OSV_SCANNER_IMAGE", "ghcr.io/google/osv-scanner:latest"),
 		GitleaksImage:           getEnv("GITLEAKS_IMAGE", "zricethezav/gitleaks:latest"),
+		ScorecardImage:          getEnv("SCORECARD_IMAGE", "gcr.io/openssf/scorecard:latest"),
 	}
 }
 

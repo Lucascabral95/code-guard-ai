@@ -70,6 +70,20 @@ export async function getExecutiveReport(id: string): Promise<ExecutiveReportRes
   return response.data;
 }
 
+export async function downloadScanReportPdf(id: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/scans/${id}/report.pdf`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `CodeGuard-AI-Report-${id}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export async function getRemediationPlan(id: string): Promise<RemediationPlanResponse> {
   const response = await apiClient.get<RemediationPlanResponse>(`/scans/${id}/remediation-plan`);
   return response.data;

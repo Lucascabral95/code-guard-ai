@@ -110,6 +110,7 @@ services:
       TRIVY_IMAGE: ${TRIVY_IMAGE:-aquasec/trivy:latest}
       OSV_SCANNER_IMAGE: ${OSV_SCANNER_IMAGE:-ghcr.io/google/osv-scanner:latest}
       GITLEAKS_IMAGE: ${GITLEAKS_IMAGE:-zricethezav/gitleaks:latest}
+      SCORECARD_IMAGE: ${SCORECARD_IMAGE:-gcr.io/openssf/scorecard:latest}
     depends_on:
       redis:
         condition: service_healthy

@@ -46,6 +46,10 @@ export class EnterpriseService {
     return this.analysisServiceClient.getScanReport(id);
   }
 
+  getScanReportPdf(id: string): Promise<Buffer> {
+    return this.analysisServiceClient.getScanReportPdf(id);
+  }
+
   getExecutiveReport(id: string): Promise<unknown> {
     return this.analysisServiceClient.getExecutiveReport(id);
   }

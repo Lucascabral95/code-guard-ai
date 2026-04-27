@@ -424,17 +424,11 @@ func trivyEndLine(raw map[string]any) *int {
 }
 
 func trivyLicenseRisk(license string) string {
-	upper := strings.ToUpper(strings.TrimSpace(license))
-	switch {
-	case upper == "":
-		return ""
-	case strings.Contains(upper, "AGPL"):
-		return "Strong copyleft license detected; validate distribution obligations."
-	case strings.Contains(upper, "GPL"):
-		return "Copyleft license detected; confirm commercial compatibility before release."
-	default:
+	risks := classifyLicenseRisk(license)
+	if len(risks) == 0 {
 		return ""
 	}
+	return risks[0].message
 }
 
 func componentLicense(component map[string]any) string {

@@ -71,6 +71,29 @@ export class AnalysisServiceClient {
     return this.forward('get', `/scans/${encodeURIComponent(id)}/report`);
   }
 
+  async getScanReportPdf(id: string): Promise<Buffer> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.request<ArrayBuffer>({
+          method: 'get',
+          url: `${this.baseUrl}/scans/${encodeURIComponent(id)}/report.pdf`,
+          responseType: 'arraybuffer',
+        }),
+      );
+      return Buffer.from(response.data);
+    } catch (error) {
+      this.metricsService.recordUpstreamFailure('analysis-service', `GET /scans/${id}/report.pdf`);
+      if (error instanceof AxiosError && error.response) {
+        throw new BadGatewayException({
+          message: 'Analysis service rejected the gateway PDF request',
+          upstreamStatus: error.response.status,
+        });
+      }
+
+      throw new BadGatewayException('Analysis service PDF report is unavailable');
+    }
+  }
+
   async getExecutiveReport(id: string): Promise<unknown> {
     return this.forward('get', `/scans/${encodeURIComponent(id)}/report/executive`);
   }

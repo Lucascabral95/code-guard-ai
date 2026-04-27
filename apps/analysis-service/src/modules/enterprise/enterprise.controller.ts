@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Res } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateScanDto } from './dto/create-scan.dto';
@@ -88,6 +90,24 @@ export class EnterpriseController {
   @ApiOkResponse({ description: 'Markdown report artifact.' })
   getScanReport(@Param('id') id: string) {
     return this.enterpriseService.getScanReport(id);
+  }
+
+  @Get('scans/:id/report.pdf')
+  @ApiOperation({ summary: 'Download PDF scan report' })
+  @ApiParam({ name: 'id', description: 'Scan UUID', format: 'uuid' })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({
+    description: 'PDF report file.',
+    content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } },
+  })
+  async getScanReportPdf(@Param('id') id: string, @Res() response: Response) {
+    const pdf = await this.enterpriseService.getScanReportPdf(id);
+    response.setHeader('content-type', 'application/pdf');
+    response.setHeader(
+      'content-disposition',
+      `attachment; filename="CodeGuard-AI-Report-${id}.pdf"`,
+    );
+    response.send(pdf);
   }
 
   @Get('scans/:id/report/executive')

@@ -16,6 +16,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { QueueService } from '../queue/queue.service';
+import { PdfReportService } from '../reports/pdf-report.service';
+import { ReportBuilderService } from '../reports/report-builder.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateScanDto } from './dto/create-scan.dto';
@@ -69,6 +71,8 @@ export class EnterpriseService {
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
+    private readonly reportBuilderService: ReportBuilderService,
+    private readonly pdfReportService: PdfReportService,
   ) {}
 
   listProjects() {
@@ -297,6 +301,13 @@ export class EnterpriseService {
     const topFindings = this.prioritizeFindings(openFindings).slice(0, 5);
     const severity = this.countBySeverity(openFindings);
     const policyEvaluation = await this.evaluatePolicies(id);
+    const reportSections = this.reportBuilderService.build({
+      findings: detail.findings,
+      toolRuns: detail.toolRuns,
+      components: detail.components,
+      licenseRisks: detail.licenseRisks,
+      policyEvaluation,
+    });
 
     return {
       generatedAt: new Date().toISOString(),
@@ -315,7 +326,13 @@ export class EnterpriseService {
       policyEvaluation,
       businessImpact: this.buildBusinessImpact(topFindings),
       recommendedNextSteps: this.buildRecommendedNextSteps(topFindings, policyEvaluation.failed),
+      ...reportSections,
     };
+  }
+
+  async getScanReportPdf(id: string) {
+    const report = await this.getExecutiveReport(id);
+    return this.pdfReportService.generate(report);
   }
 
   async getRemediationPlan(id: string) {
@@ -771,7 +788,7 @@ export class EnterpriseService {
   ) {
     const primaryRisk = topFindings[0]?.message ?? 'No actionable findings are currently open.';
     return [
-      `Risk score is ${scan.riskScore ?? 'pending'}/100 with ${scan.riskLevel ?? 'pending'} risk.`,
+      `Health score is ${scan.riskScore ?? 'pending'}/100 with ${scan.riskLevel ?? 'pending'} risk.`,
       `Detected stack is ${scan.detectedStack ?? 'unknown'}.`,
       `Open critical/high findings: ${severity.CRITICAL + severity.HIGH}.`,
       `Fix first: ${primaryRisk}`,

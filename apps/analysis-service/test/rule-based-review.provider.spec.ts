@@ -20,6 +20,6 @@ describe('RuleBasedReviewProvider', () => {
           },
         ],
       }),
-    ).resolves.toContain('Risk score is 75/100');
+    ).resolves.toContain('Health score is 75/100');
   });
 });

@@ -21,7 +21,7 @@ export class RuleBasedReviewProvider implements AiReviewProvider {
 
     return [
       `Repository ${input.repoUrl} on branch ${input.branch} was analyzed in ${input.detectedStack ?? 'unknown'} mode.`,
-      `Risk score is ${input.riskScore}/100 with ${input.riskLevel} risk.`,
+      `Health score is ${input.riskScore}/100 with ${input.riskLevel} risk.`,
       `Findings: ${severityCounts.CRITICAL ?? 0} critical, ${severityCounts.HIGH ?? 0} high, ${severityCounts.MEDIUM ?? 0} medium, ${severityCounts.LOW ?? 0} low, ${severityCounts.INFO ?? 0} informational.`,
       `Primary recommendation: ${mainRisk}`,
     ].join(' ');
