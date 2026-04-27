@@ -6,7 +6,7 @@ describe('PdfReportService', () => {
 
     const pdf = service.generate({
       generatedAt: new Date().toISOString(),
-  executiveSummary: 'Health score is 82/100 with MEDIUM risk.',
+      executiveSummary: 'Health score is 82/100 with MEDIUM risk.',
       businessImpact: 'The repository has actionable dependency and CI posture work.',
       recommendedNextSteps: ['Pin GitHub Actions to commit SHAs.'],
       risk: { score: 82, level: 'MEDIUM', openFindings: 1, criticalAndHigh: 1 },
