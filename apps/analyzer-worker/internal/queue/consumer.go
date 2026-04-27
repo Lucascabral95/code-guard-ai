@@ -63,6 +63,10 @@ func (consumer *Consumer) Ack(ctx context.Context, messageID string) error {
 	return consumer.client.XAck(ctx, consumer.streamName, consumer.groupName, messageID).Err()
 }
 
+func (consumer *Consumer) StreamLength(ctx context.Context) (int64, error) {
+	return consumer.client.XLen(ctx, consumer.streamName).Result()
+}
+
 func (consumer *Consumer) Close() error {
 	return consumer.client.Close()
 }

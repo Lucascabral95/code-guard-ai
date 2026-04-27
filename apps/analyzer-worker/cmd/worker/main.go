@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/client"
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/config"
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/logger"
+	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/metrics"
 	"github.com/codeguard-ai/codeguard/apps/analyzer-worker/internal/queue"
 	"github.com/redis/go-redis/v9"
 )
@@ -27,6 +29,9 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	metricsRegistry := metrics.NewRegistry()
+	go metricsRegistry.StartServer(ctx, fmt.Sprintf(":%d", cfg.WorkerMetricsPort), log)
 
 	consumer := queue.NewConsumer(cfg.RedisAddr, cfg.StreamName, cfg.ConsumerGroup, cfg.ConsumerName)
 	defer consumer.Close()
@@ -54,9 +59,15 @@ func main() {
 			}
 			continue
 		}
+		if len(messages) > 0 {
+			metricsRegistry.RecordRedisMessages(len(messages))
+		}
+		if depth, err := consumer.StreamLength(ctx); err == nil {
+			metricsRegistry.SetQueueDepth(depth)
+		}
 
 		for _, message := range messages {
-			processMessage(ctx, log, consumer, analysisClient, repositoryAnalyzer, message.ID, message)
+			processMessage(ctx, log, metricsRegistry, consumer, analysisClient, repositoryAnalyzer, message.ID, message)
 		}
 	}
 }
@@ -64,6 +75,7 @@ func main() {
 func processMessage(
 	ctx context.Context,
 	log *slog.Logger,
+	metricsRegistry *metrics.Registry,
 	consumer *queue.Consumer,
 	analysisClient *client.AnalysisClient,
 	repositoryAnalyzer analyzer.Analyzer,
@@ -80,9 +92,11 @@ func processMessage(
 	}
 
 	log.Info("processing analysis job", "analysisID", job.AnalysisID, "repoURL", job.RepoURL)
+	metricsRegistry.RecordJob("started")
 
 	if err := analysisClient.MarkStarted(ctx, job.AnalysisID); err != nil {
 		log.Error("failed to mark analysis as running", "analysisID", job.AnalysisID, "error", err)
+		metricsRegistry.RecordJob("failed")
 		return
 	}
 
@@ -96,11 +110,15 @@ func processMessage(
 		if ackErr := consumer.Ack(ctx, message.ID); ackErr != nil {
 			log.Error("failed to acknowledge failed job", "messageID", message.ID, "error", ackErr)
 		}
+		metricsRegistry.RecordJob("failed")
 		return
 	}
 
+	metricsRegistry.RecordToolRuns(result.ToolRuns)
+
 	if err := analysisClient.SendResult(ctx, job.AnalysisID, result); err != nil {
 		log.Error("failed to publish analysis result", "analysisID", job.AnalysisID, "error", err)
+		metricsRegistry.RecordJob("failed")
 		return
 	}
 
@@ -109,5 +127,6 @@ func processMessage(
 		return
 	}
 
+	metricsRegistry.RecordJob("completed")
 	log.Info("analysis job completed", "analysisID", job.AnalysisID)
 }

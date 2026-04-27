@@ -24,6 +24,7 @@ type Config struct {
 	ScannerWorkspacePath    string
 	ScannerMemoryLimit      string
 	ScannerCPULimit         string
+	WorkerMetricsPort       int
 	SemgrepImage            string
 	TrivyImage              string
 	OSVScannerImage         string
@@ -49,6 +50,7 @@ func Load() Config {
 		ScannerWorkspacePath:    getEnv("SCANNER_WORKSPACE_PATH", "/workspace"),
 		ScannerMemoryLimit:      getEnv("SCANNER_MEMORY_LIMIT", "2g"),
 		ScannerCPULimit:         getEnv("SCANNER_CPU_LIMIT", "2.0"),
+		WorkerMetricsPort:       getIntEnv("WORKER_METRICS_PORT", 9101),
 		SemgrepImage:            getEnv("SEMGREP_IMAGE", "semgrep/semgrep:latest"),
 		TrivyImage:              getEnv("TRIVY_IMAGE", "aquasec/trivy:latest"),
 		OSVScannerImage:         getEnv("OSV_SCANNER_IMAGE", "ghcr.io/google/osv-scanner:latest"),

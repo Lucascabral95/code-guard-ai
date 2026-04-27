@@ -9,6 +9,7 @@ import { CreateProjectDto } from '../modules/enterprise/dto/create-project.dto';
 import { CreateScanDto } from '../modules/enterprise/dto/create-scan.dto';
 import { UpdatePolicyDto } from '../modules/enterprise/dto/update-policy.dto';
 import { UpdateFindingStatusDto } from '../modules/enterprise/dto/update-finding-status.dto';
+import { MetricsService } from '../modules/metrics/metrics.service';
 
 @Injectable()
 export class AnalysisServiceClient {
@@ -16,6 +17,7 @@ export class AnalysisServiceClient {
 
   constructor(
     private readonly httpService: HttpService,
+    private readonly metricsService: MetricsService,
     configService: ConfigService,
   ) {
     this.baseUrl = configService.get<string>('ANALYSIS_SERVICE_URL', 'http://localhost:3002');
@@ -131,6 +133,10 @@ export class AnalysisServiceClient {
       );
       return response.data;
     } catch (error) {
+      this.metricsService.recordUpstreamFailure(
+        'analysis-service',
+        `${method.toUpperCase()} ${path}`,
+      );
       if (error instanceof AxiosError && error.response) {
         throw new BadGatewayException({
           message: 'Analysis service rejected the gateway request',

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { MetricsService } from '../metrics/metrics.service';
 
 export interface AnalysisJob {
   analysisId: string;
@@ -15,7 +16,10 @@ export class QueueService implements OnModuleDestroy {
   private readonly redis: Redis;
   private readonly streamName: string;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly metricsService: MetricsService,
+  ) {
     this.streamName = configService.get<string>('ANALYSIS_STREAM_NAME', 'scan.jobs');
     const redisAddr = configService.get<string>('REDIS_ADDR', 'localhost:6379');
     const [host, port] = redisAddr.split(':');
@@ -27,22 +31,29 @@ export class QueueService implements OnModuleDestroy {
   }
 
   async publishAnalysisJob(job: AnalysisJob): Promise<string> {
-    const messageId = await this.redis.xadd(
-      this.streamName,
-      '*',
-      'analysisId',
-      job.analysisId,
-      'scanId',
-      job.scanId ?? '',
-      'repoUrl',
-      job.repoUrl,
-      'branch',
-      job.branch,
-      'safeMode',
-      String(job.safeMode),
-    );
+    let messageId: string | null;
+    try {
+      messageId = await this.redis.xadd(
+        this.streamName,
+        '*',
+        'analysisId',
+        job.analysisId,
+        'scanId',
+        job.scanId ?? '',
+        'repoUrl',
+        job.repoUrl,
+        'branch',
+        job.branch,
+        'safeMode',
+        String(job.safeMode),
+      );
+    } catch (error) {
+      this.metricsService.recordRedisPublishError(this.streamName);
+      throw error;
+    }
 
     if (!messageId) {
+      this.metricsService.recordRedisPublishError(this.streamName);
       throw new Error('Redis did not return a stream message id');
     }
 

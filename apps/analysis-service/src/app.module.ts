@@ -7,6 +7,7 @@ import { HealthModule } from './modules/health/health.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { EnterpriseModule } from './modules/enterprise/enterprise.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EnterpriseModule } from './modules/enterprise/enterprise.module';
     ReportsModule,
     AiModule,
     HealthModule,
+    MetricsModule,
     AnalysesModule,
     EnterpriseModule,
   ],

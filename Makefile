@@ -1,12 +1,15 @@
-.PHONY: help install up up-scanners down logs dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset redeploy
+.PHONY: help install up up-scanners up-observability down down-observability logs logs-observability dev dev-web dev-gateway dev-analysis dev-worker db-migrate db-studio test lint build clean reset redeploy
 
 help:
 	@echo "CodeGuard AI commands:"
 	@echo "  make install       Install Node workspaces and Go worker dependencies"
 	@echo "  make up            Build and start Docker Compose services"
 	@echo "  make up-scanners   Build and start Docker Compose with real scanner runtime enabled"
+	@echo "  make up-observability Build and start the app plus Prometheus, Grafana, Loki and exporters"
 	@echo "  make down          Stop Docker Compose services"
+	@echo "  make down-observability Stop observability services"
 	@echo "  make logs          Follow Docker Compose logs"
+	@echo "  make logs-observability Follow observability logs"
 	@echo "  make dev           Show local development commands"
 	@echo "  make dev-web       Run the Next.js web app"
 	@echo "  make dev-gateway   Run the NestJS API Gateway"
@@ -29,14 +32,25 @@ install:
 up:
 	docker compose up --build -d
 
-up-scanners:  # corrélo cada vez que quieras levantar el entorno en modo scanners reales (después de down, reinicio, o cambios de imágenes/config).
+up-scanners:
 	docker compose -f docker-compose.yml -f docker-compose.scanners.yml up --build -d
+
+up-observability:
+	docker compose up --build -d
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build -d prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
 
 down:
 	docker compose down
 
+down-observability:
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml stop prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml rm -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
+
 logs:
 	docker compose logs -f
+
+logs-observability:
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml logs -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
 
 dev:
 	@echo "Run these in separate terminals:"
