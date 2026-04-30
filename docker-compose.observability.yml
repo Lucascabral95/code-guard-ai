@@ -9,6 +9,7 @@ services:
       - '${PROMETHEUS_PORT:-9090}:9090'
     volumes:
       - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     depends_on:
       - api-gateway
@@ -17,6 +18,18 @@ services:
       - redis-exporter
       - postgres-exporter
       - cadvisor
+
+  analysis-service:
+    environment:
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      DB_QUERY_TRACING_ENABLED: ${DB_QUERY_TRACING_ENABLED:-true}
+      DB_QUERY_METRICS_ENABLED: ${DB_QUERY_METRICS_ENABLED:-true}
+      DB_SLOW_QUERY_THRESHOLD_MS: ${DB_SLOW_QUERY_THRESHOLD_MS:-250}
+      DB_QUERY_TRACE_SAMPLE_RATE: ${DB_QUERY_TRACE_SAMPLE_RATE:-1}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+    depends_on:
+      otel-collector:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:11.4.0
@@ -33,6 +46,26 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ['-config.file=/etc/tempo/tempo.yml']
+    ports:
+      - '3200:3200'
+    volumes:
+      - ./infra/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/tmp/tempo
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ['--config=/etc/otel-collector.yml']
+    ports:
+      - '4318:4318'
+    volumes:
+      - ./infra/observability/otel-collector/otel-collector.yml:/etc/otel-collector.yml:ro
+    depends_on:
+      - tempo
 
   loki:
     image: grafana/loki:3.3.2
@@ -98,3 +131,4 @@ volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+  tempo_data:

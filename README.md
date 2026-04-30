@@ -52,6 +52,9 @@ consolida resultados. El `analyzer-worker` en Go consume Redis Streams, clona re
 - Analisis extra de postura: CI/CD, repo hygiene, Docker/IaC, package health, license policy y OpenSSF Scorecard.
 - Reportes ejecutivos con graficos operativos y descarga PDF desde el dashboard.
 - Swagger en `api-gateway` y `analysis-service`.
+- Pool PostgreSQL explicito en `analysis-service` con limites, timeouts, readiness y metricas.
+- PgBouncer delante de PostgreSQL para pooling runtime; Prisma Migrate usa `DATABASE_DIRECT_URL`.
+- Trazas opcionales de queries Prisma via OpenTelemetry Collector + Tempo.
 - CI profesional (lint, format, tests, builds, Prisma migrations y Docker builds).
 - Docker Compose para stack local completo.
 - AI opcional (Ollama) desactivada por defecto; proveedor rule-based activo.
@@ -65,6 +68,7 @@ Servicios implementados:
 - `analysis-service` (NestJS + Prisma)
 - `analyzer-worker` (Go)
 - `postgres`
+- `pgbouncer`
 - `redis`
 
 Flujos implementados de punta a punta:
@@ -109,7 +113,7 @@ codeguard-ai/
 |-- scripts/
 |-- docker-compose.yml
 |-- Makefile
-|-- .env.example
+|-- .env.template
 `-- README.md
 ```
 
@@ -211,6 +215,7 @@ http://localhost:3001
 Rutas actuales:
 
 - `GET /health`
+- `GET /health/ready`
 - `POST /analyses`
 - `GET /analyses`
 - `GET /analyses/:id`
@@ -290,10 +295,13 @@ Nota:
 Estado actual:
 
 - healthchecks en Docker Compose para `postgres`, `redis`, `analysis-service` y `api-gateway`
+- readiness real de PostgreSQL en `analysis-service` mediante `GET /health/ready`
 - endpoint `/metrics` en `api-gateway`, `analysis-service` y `analyzer-worker`
-- stack opcional con Prometheus, Grafana, Loki, Promtail, cAdvisor, Redis exporter y Postgres exporter
+- stack opcional con Prometheus, Grafana, Loki, Tempo, OpenTelemetry Collector, Promtail, cAdvisor, Redis exporter y Postgres exporter
 - dashboard Grafana provisionado: `CodeGuard AI Operations Overview`
 - logs centralizados en Loki mediante Promtail
+- metricas del pool Prisma/PostgreSQL: connection limit, pool timeout y connect timeout
+- alertas Prometheus para slow queries, p95 alto de DB, saturacion de conexiones y pool timeout agresivo
 
 Comandos:
 
@@ -347,7 +355,7 @@ CI en GitHub Actions (`.github/workflows/ci.yml`) ejecuta:
 ### 1. Configurar entorno
 
 ```bash
-cp .env.example .env
+cp .env.template .env
 ```
 
 ### 2. Instalar dependencias
@@ -392,7 +400,7 @@ Directorios de preparacion:
 
 Archivo de referencia:
 
-- `.env.example`
+- `.env.template`
 
 Variables destacadas:
 
@@ -400,6 +408,25 @@ Variables destacadas:
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
 - `DATABASE_URL`
+- `DATABASE_DIRECT_URL`
+- `DB_POOL_CONNECTION_LIMIT`
+- `DB_POOL_TIMEOUT_SECONDS`
+- `DB_CONNECT_TIMEOUT_SECONDS`
+- `DB_APPLICATION_NAME`
+- `DB_PGBOUNCER`
+- `DB_QUERY_LOGGING`
+- `DB_QUERY_METRICS_ENABLED`
+- `DB_SLOW_QUERY_THRESHOLD_MS`
+- `DB_QUERY_TRACING_ENABLED`
+- `DB_QUERY_TRACE_SAMPLE_RATE`
+- `OTEL_ENABLED`
+- `OTEL_SERVICE_NAME`
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+- `PGBOUNCER_PORT`
+- `PGBOUNCER_POOL_MODE`
+- `PGBOUNCER_MAX_CLIENT_CONN`
+- `PGBOUNCER_DEFAULT_POOL_SIZE`
+- `PGBOUNCER_RESERVE_POOL_SIZE`
 - `REDIS_ADDR`
 - `ANALYSIS_STREAM_NAME`
 - `API_GATEWAY_PORT`

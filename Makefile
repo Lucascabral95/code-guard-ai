@@ -36,21 +36,20 @@ up-scanners:
 	docker compose -f docker-compose.yml -f docker-compose.scanners.yml up --build -d
 
 up-observability:
-	docker compose up --build -d
-	docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build -d prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml up --build -d
 
 down:
 	docker compose down
 
 down-observability:
-	docker compose -f docker-compose.yml -f docker-compose.observability.yml stop prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
-	docker compose -f docker-compose.yml -f docker-compose.observability.yml rm -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml stop prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter tempo otel-collector
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml rm -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter tempo otel-collector
 
 logs:
 	docker compose logs -f
 
 logs-observability:
-	docker compose -f docker-compose.yml -f docker-compose.observability.yml logs -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter
+	docker compose -f docker-compose.yml -f docker-compose.observability.yml logs -f prometheus grafana loki promtail cadvisor redis-exporter postgres-exporter tempo otel-collector
 
 dev:
 	@echo "Run these in separate terminals:"
