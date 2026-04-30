@@ -1,13 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
+import { envs } from '../../config/envs';
 
 @Injectable()
 export class InternalSecretGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
-
   canActivate(context: ExecutionContext): boolean {
-    const expectedSecret = this.configService.get<string>('INTERNAL_SECRET');
+    const expectedSecret = envs.internalSecret;
     if (!expectedSecret) {
       throw new UnauthorizedException('Internal secret is not configured');
     }

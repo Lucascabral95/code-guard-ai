@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Prisma, PrismaClient } from '@prisma/client';
 import {
   buildDatabasePoolConfig,
@@ -25,8 +24,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly poolConfig: DatabasePoolConfig;
   private readonly queryTelemetry: DatabaseQueryTelemetry;
 
-  constructor(configService: ConfigService) {
-    const poolConfig = buildDatabasePoolConfig(configService);
+  constructor() {
+    const poolConfig = buildDatabasePoolConfig();
     super(buildPrismaClientOptions(poolConfig));
 
     this.poolConfig = poolConfig;

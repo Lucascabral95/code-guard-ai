@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import { envs } from '../config/envs';
 import type { DatabasePoolConfig } from './database.config';
 
 export type DatabaseQueryMetric = {
@@ -120,7 +121,7 @@ export class DatabaseQueryTelemetry {
               resource: {
                 attributes: [
                   stringAttribute('service.name', this.poolConfig.otelServiceName),
-                  stringAttribute('deployment.environment', process.env.NODE_ENV ?? 'development'),
+                  stringAttribute('deployment.environment', envs.nodeEnv),
                 ],
               },
               scopeSpans: [

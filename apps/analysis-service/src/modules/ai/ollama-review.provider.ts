@@ -1,22 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { envs } from '../../config/envs';
 import { AiReviewProvider, GenerateSummaryInput } from './ai-review-provider';
 import { RuleBasedReviewProvider } from './rule-based-review.provider';
 
 @Injectable()
 export class OllamaReviewProvider implements AiReviewProvider {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly fallbackProvider: RuleBasedReviewProvider,
-  ) {}
+  constructor(private readonly fallbackProvider: RuleBasedReviewProvider) {}
 
   async generateSummary(input: GenerateSummaryInput): Promise<string> {
-    const baseUrl = this.configService.get<string>('OLLAMA_BASE_URL', 'http://localhost:11434');
-    const response = await fetch(`${baseUrl}/api/generate`, {
+    const response = await fetch(`${envs.ollamaBaseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: this.configService.get<string>('OLLAMA_MODEL', 'llama3.2'),
+        model: envs.ollamaModel,
         stream: false,
         prompt: this.buildPrompt(input),
       }),

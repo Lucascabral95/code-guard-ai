@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AiModule } from './modules/ai/ai.module';
 import { AnalysesModule } from './modules/analyses/analyses.module';
 import { DatabaseModule } from './database/prisma.module';
@@ -11,7 +10,6 @@ import { MetricsModule } from './modules/metrics/metrics.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     QueueModule,
     ReportsModule,
