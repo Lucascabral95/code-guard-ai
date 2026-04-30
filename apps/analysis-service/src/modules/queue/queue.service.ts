@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { envs } from '../../config/envs';
 import { MetricsService } from '../metrics/metrics.service';
 
 export interface AnalysisJob {
@@ -16,13 +16,9 @@ export class QueueService implements OnModuleDestroy {
   private readonly redis: Redis;
   private readonly streamName: string;
 
-  constructor(
-    configService: ConfigService,
-    private readonly metricsService: MetricsService,
-  ) {
-    this.streamName = configService.get<string>('ANALYSIS_STREAM_NAME', 'scan.jobs');
-    const redisAddr = configService.get<string>('REDIS_ADDR', 'localhost:6379');
-    const [host, port] = redisAddr.split(':');
+  constructor(private readonly metricsService: MetricsService) {
+    this.streamName = envs.analysisStreamName;
+    const [host, port] = envs.redisAddr.split(':');
     this.redis = new Redis({
       host,
       port: Number(port ?? 6379),

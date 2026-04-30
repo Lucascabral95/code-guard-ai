@@ -4,7 +4,6 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AnalysisStatus,
   ArtifactKind,
@@ -15,6 +14,7 @@ import {
   Severity,
 } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { envs } from '../../config/envs';
 import { QueueService } from '../queue/queue.service';
 import { PdfReportService } from '../reports/pdf-report.service';
 import { ReportBuilderService } from '../reports/report-builder.service';
@@ -70,7 +70,6 @@ export class EnterpriseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
-    private readonly configService: ConfigService,
     private readonly reportBuilderService: ReportBuilderService,
     private readonly pdfReportService: PdfReportService,
   ) {}
@@ -162,7 +161,7 @@ export class EnterpriseService {
     }
 
     const repository = project.repositories[0];
-    const safeMode = this.configService.get<string>('SAFE_ANALYSIS_MODE', 'true') === 'true';
+    const safeMode = envs.safeAnalysisMode;
     const branch = dto.branch || repository.defaultBranch || 'main';
 
     const { analysis, scan } = await this.prisma.$transaction(async (transaction) => {

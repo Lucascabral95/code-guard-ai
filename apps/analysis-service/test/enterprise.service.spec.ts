@@ -15,13 +15,7 @@ describe('EnterpriseService', () => {
       },
     };
 
-    const service = new EnterpriseService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new EnterpriseService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(service.getDashboardRemediation()).resolves.toMatchObject({
       totals: {

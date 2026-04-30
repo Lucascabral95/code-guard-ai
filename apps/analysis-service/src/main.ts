@@ -1,12 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { envs } from './config/envs';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  const config = app.get(ConfigService);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -16,7 +15,7 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  if (config.get<string>('SWAGGER_ENABLED', 'true') === 'true') {
+  if (envs.swaggerEnabled) {
     const documentConfig = new DocumentBuilder()
       .setTitle('CodeGuard AI Analysis Service')
       .setDescription(
@@ -48,8 +47,7 @@ async function bootstrap(): Promise<void> {
     });
   }
 
-  const port = config.get<number>('PORT') ?? config.get<number>('ANALYSIS_SERVICE_PORT') ?? 3002;
-  await app.listen(port);
+  await app.listen(envs.port);
 }
 
 void bootstrap();

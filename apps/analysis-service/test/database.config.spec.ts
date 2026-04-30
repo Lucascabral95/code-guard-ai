@@ -1,20 +1,12 @@
-import type { ConfigService } from '@nestjs/config';
+import { loadEnvs } from '../src/config/envs';
 import { buildDatabasePoolConfig } from '../src/database/database.config';
-
-function config(values: Record<string, string | undefined>): ConfigService {
-  return {
-    get: <T = string>(key: string, fallback?: T) => {
-      const value = values[key];
-      return (value === undefined ? fallback : value) as T;
-    },
-  } as ConfigService;
-}
 
 describe('buildDatabasePoolConfig', () => {
   it('adds explicit Prisma pool parameters to DATABASE_URL', () => {
     const result = buildDatabasePoolConfig(
-      config({
+      loadEnvs({
         DATABASE_URL: 'postgresql://codeguard:secret@postgres:5432/codeguard',
+        DB_PGBOUNCER: 'false',
       }),
     );
 
@@ -28,7 +20,7 @@ describe('buildDatabasePoolConfig', () => {
     expect(result.slowQueryThresholdMs).toBe(250);
     expect(result.queryTracingEnabled).toBe(false);
     expect(result.traceSampleRate).toBe(1);
-    expect(result.otelServiceName).toBe('codeguard-analysis-service-db');
+    expect(result.otelServiceName).toBe('codeguard-analysis-service');
     expect(result.url).toContain('connection_limit=10');
     expect(result.url).toContain('pool_timeout=10');
     expect(result.url).toContain('connect_timeout=10');
@@ -39,7 +31,7 @@ describe('buildDatabasePoolConfig', () => {
 
   it('lets explicit environment settings override URL query parameters', () => {
     const result = buildDatabasePoolConfig(
-      config({
+      loadEnvs({
         DATABASE_URL:
           'postgresql://codeguard:secret@postgres:5432/codeguard?connection_limit=4&pool_timeout=5',
         DB_POOL_CONNECTION_LIMIT: '20',
@@ -78,23 +70,19 @@ describe('buildDatabasePoolConfig', () => {
 
   it('rejects invalid pool values early', () => {
     expect(() =>
-      buildDatabasePoolConfig(
-        config({
-          DATABASE_URL: 'postgresql://codeguard:secret@postgres:5432/codeguard',
-          DB_POOL_CONNECTION_LIMIT: '0',
-        }),
-      ),
+      loadEnvs({
+        DATABASE_URL: 'postgresql://codeguard:secret@postgres:5432/codeguard',
+        DB_POOL_CONNECTION_LIMIT: '0',
+      }),
     ).toThrow('DB_POOL_CONNECTION_LIMIT must be a positive integer.');
   });
 
   it('rejects invalid trace sample rates early', () => {
     expect(() =>
-      buildDatabasePoolConfig(
-        config({
-          DATABASE_URL: 'postgresql://codeguard:secret@postgres:5432/codeguard',
-          DB_QUERY_TRACE_SAMPLE_RATE: '1.5',
-        }),
-      ),
+      loadEnvs({
+        DATABASE_URL: 'postgresql://codeguard:secret@postgres:5432/codeguard',
+        DB_QUERY_TRACE_SAMPLE_RATE: '1.5',
+      }),
     ).toThrow('DB_QUERY_TRACE_SAMPLE_RATE must be a number between 0 and 1.');
   });
 });

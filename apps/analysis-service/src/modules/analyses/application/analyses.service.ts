@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   AnalysisStatus,
   ArtifactKind,
@@ -11,6 +10,7 @@ import {
   ToolRunStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { envs } from '../../../config/envs';
 import { AI_REVIEW_PROVIDER, AiReviewProvider } from '../../ai/ai-review-provider';
 import { QueueService } from '../../queue/queue.service';
 import { RiskScoringService } from '../../reports/risk-scoring.service';
@@ -42,14 +42,13 @@ export class AnalysesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
-    private readonly configService: ConfigService,
     private readonly riskScoringService: RiskScoringService,
     @Inject(AI_REVIEW_PROVIDER)
     private readonly reviewProvider: AiReviewProvider,
   ) {}
 
   async create(dto: CreateAnalysisDto) {
-    const safeMode = this.configService.get<string>('SAFE_ANALYSIS_MODE', 'true') === 'true';
+    const safeMode = envs.safeAnalysisMode;
     const branch = dto.branch || 'main';
     const repoName = this.extractRepositoryName(dto.repoUrl);
     const projectSlug = this.slugify(repoName);

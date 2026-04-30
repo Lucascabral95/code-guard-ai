@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { AnalysisStatus, LogLevel } from '@prisma/client';
 import { AnalysesService } from '../src/modules/analyses/application/analyses.service';
 import { RiskScoringService } from '../src/modules/reports/risk-scoring.service';
@@ -61,17 +60,9 @@ describe('AnalysesService', () => {
     const queue = {
       publishAnalysisJob: jest.fn().mockResolvedValue('stream-id'),
     };
-    const config = {
-      get: jest.fn().mockReturnValue('true'),
-    } as unknown as ConfigService;
-
-    const service = new AnalysesService(
-      prisma as never,
-      queue as never,
-      config,
-      new RiskScoringService(),
-      { generateSummary: jest.fn() },
-    );
+    const service = new AnalysesService(prisma as never, queue as never, new RiskScoringService(), {
+      generateSummary: jest.fn(),
+    });
 
     await expect(
       service.create({ repoUrl: 'https://github.com/vercel/next.js', branch: 'main' }),
