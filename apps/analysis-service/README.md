@@ -16,6 +16,7 @@ Servicio central de negocio y persistencia de CodeGuard AI.
 Public/internal app endpoints:
 
 - `GET /health`
+- `GET /health/ready`
 - `POST /analyses`
 - `GET /analyses`
 - `GET /analyses/:id`
@@ -47,6 +48,20 @@ Swagger:
 - `PORT` (default `3002`)
 - `ANALYSIS_SERVICE_PORT` (fallback, default `3002`)
 - `DATABASE_URL`
+- `DATABASE_DIRECT_URL`
+- `DB_POOL_CONNECTION_LIMIT` (default `10`)
+- `DB_POOL_TIMEOUT_SECONDS` (default `10`)
+- `DB_CONNECT_TIMEOUT_SECONDS` (default `10`)
+- `DB_APPLICATION_NAME` (default `codeguard-analysis-service`)
+- `DB_PGBOUNCER` (default `false`)
+- `DB_QUERY_LOGGING` (default `false`)
+- `DB_QUERY_METRICS_ENABLED` (default `true`)
+- `DB_SLOW_QUERY_THRESHOLD_MS` (default `250`)
+- `DB_QUERY_TRACING_ENABLED` (default `false`)
+- `DB_QUERY_TRACE_SAMPLE_RATE` (default `1`)
+- `OTEL_ENABLED` (default `false`)
+- `OTEL_SERVICE_NAME`
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
 - `REDIS_ADDR` (default `localhost:6379`)
 - `ANALYSIS_STREAM_NAME` (default `scan.jobs`)
 - `INTERNAL_SECRET` (requerido para endpoints internos)
@@ -61,6 +76,27 @@ Swagger:
 - Migrar local: `npm --workspace @codeguard/analysis-service run db:migrate`
 - Aplicar migraciones: `npm --workspace @codeguard/analysis-service run db:deploy`
 - Studio: `npm --workspace @codeguard/analysis-service run db:studio`
+
+## Pool PostgreSQL
+
+El servicio usa un unico `PrismaService` global dentro de NestJS. Ese singleton controla el pool interno de Prisma y evita crear clientes por request.
+
+La URL final de conexion se normaliza al iniciar el servicio con parametros explicitos:
+
+- `connection_limit`: maximo de conexiones del pool Prisma.
+- `pool_timeout`: tiempo maximo esperando una conexion libre.
+- `connect_timeout`: tiempo maximo de conexion inicial.
+- `application_name`: nombre visible en PostgreSQL para `pg_stat_activity`.
+- `pgbouncer`: compatibilidad opcional si se usa PgBouncer delante de PostgreSQL.
+
+En Docker, el runtime usa `DATABASE_URL` apuntando a PgBouncer y Prisma Migrate usa `DATABASE_DIRECT_URL` apuntando directo a PostgreSQL. Esto evita problemas de migraciones con transaction pooling.
+
+Endpoints y metricas:
+
+- `GET /health`: liveness liviano, no toca DB.
+- `GET /health/ready`: valida `SELECT 1`, devuelve latencia y configuracion sanitizada del pool.
+- `GET /metrics`: expone `codeguard_database_pool_connection_limit`, `codeguard_database_pool_timeout_seconds`, `codeguard_database_connect_timeout_seconds`, `codeguard_database_query_duration_seconds` y `codeguard_database_slow_queries_total`.
+- OpenTelemetry: si `OTEL_ENABLED=true` y `DB_QUERY_TRACING_ENABLED=true`, cada query muestreada exporta una traza OTLP HTTP hacia `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`.
 
 ## Scripts
 

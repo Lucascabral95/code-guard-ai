@@ -11,7 +11,7 @@ Required tools:
 Run:
 
 ```bash
-cp .env.example .env
+cp .env.template .env
 make install
 make up
 make db-migrate

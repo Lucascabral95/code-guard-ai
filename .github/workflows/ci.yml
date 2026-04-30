@@ -21,6 +21,8 @@ env:
   NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
   SAFE_ANALYSIS_MODE: true
   OLLAMA_ENABLED: false
+  DATABASE_URL: postgresql://codeguard:codeguard@localhost:5432/codeguard
+  DATABASE_DIRECT_URL: postgresql://codeguard:codeguard@localhost:5432/codeguard
 
 jobs:
   node-quality:
@@ -109,9 +111,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://codeguard:codeguard@localhost:5432/codeguard
 
     steps:
       - name: Checkout

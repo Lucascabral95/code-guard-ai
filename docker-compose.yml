@@ -15,6 +15,31 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.1-p0
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-codeguard}:${POSTGRES_PASSWORD:-codeguard}@postgres:5432/${POSTGRES_DB:-codeguard}
+      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-200}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      RESERVE_POOL_SIZE: ${PGBOUNCER_RESERVE_POOL_SIZE:-5}
+      AUTH_TYPE: plain
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,application_name
+    ports:
+      - '${PGBOUNCER_PORT:-6432}:5432'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_USER:-codeguard} -d ${POSTGRES_DB:-codeguard}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     ports:
@@ -35,7 +60,21 @@ services:
       PORT: ${ANALYSIS_SERVICE_PORT:-3002}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
       METRICS_ENABLED: ${METRICS_ENABLED:-true}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://codeguard:codeguard@postgres:5432/codeguard}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-codeguard}:${POSTGRES_PASSWORD:-codeguard}@pgbouncer:5432/${POSTGRES_DB:-codeguard}
+      DATABASE_DIRECT_URL: postgresql://${POSTGRES_USER:-codeguard}:${POSTGRES_PASSWORD:-codeguard}@postgres:5432/${POSTGRES_DB:-codeguard}
+      DB_POOL_CONNECTION_LIMIT: ${DB_POOL_CONNECTION_LIMIT:-10}
+      DB_POOL_TIMEOUT_SECONDS: ${DB_POOL_TIMEOUT_SECONDS:-10}
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-10}
+      DB_APPLICATION_NAME: ${DB_APPLICATION_NAME:-codeguard-analysis-service}
+      DB_PGBOUNCER: 'true'
+      DB_QUERY_LOGGING: ${DB_QUERY_LOGGING:-false}
+      DB_QUERY_METRICS_ENABLED: ${DB_QUERY_METRICS_ENABLED:-true}
+      DB_SLOW_QUERY_THRESHOLD_MS: ${DB_SLOW_QUERY_THRESHOLD_MS:-250}
+      DB_QUERY_TRACING_ENABLED: ${DB_QUERY_TRACING_ENABLED:-false}
+      DB_QUERY_TRACE_SAMPLE_RATE: ${DB_QUERY_TRACE_SAMPLE_RATE:-1}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-codeguard-analysis-service}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://otel-collector:4318/v1/traces}
       REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
       ANALYSIS_STREAM_NAME: ${ANALYSIS_STREAM_NAME:-scan.jobs}
       INTERNAL_SECRET: ${INTERNAL_SECRET:-dev-internal-secret}
@@ -46,7 +85,7 @@ services:
     ports:
       - '3002:3002'
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -54,7 +93,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'node -e "fetch(''http://localhost:3002/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+          'node -e "fetch(''http://localhost:3002/health/ready'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
         ]
       interval: 10s
       timeout: 5s

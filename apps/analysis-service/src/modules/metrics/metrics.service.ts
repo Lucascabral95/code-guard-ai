@@ -123,6 +123,77 @@ export class MetricsService {
       );
     }
 
+    const poolConfig = this.prisma.getPoolConfig();
+    const queryTelemetry = this.prisma.getQueryTelemetrySnapshot();
+    lines.push(
+      '# HELP codeguard_database_pool_connection_limit Configured Prisma PostgreSQL pool connection limit.',
+      '# TYPE codeguard_database_pool_connection_limit gauge',
+      `codeguard_database_pool_connection_limit{${formatLabels({
+        service: this.serviceName,
+        application_name: poolConfig.applicationName,
+        pgbouncer: String(poolConfig.pgBouncer),
+      })}} ${poolConfig.connectionLimit}`,
+      '# HELP codeguard_database_pool_timeout_seconds Configured Prisma PostgreSQL pool timeout in seconds.',
+      '# TYPE codeguard_database_pool_timeout_seconds gauge',
+      `codeguard_database_pool_timeout_seconds{${formatLabels({
+        service: this.serviceName,
+      })}} ${poolConfig.poolTimeoutSeconds}`,
+      '# HELP codeguard_database_connect_timeout_seconds Configured PostgreSQL connect timeout in seconds.',
+      '# TYPE codeguard_database_connect_timeout_seconds gauge',
+      `codeguard_database_connect_timeout_seconds{${formatLabels({
+        service: this.serviceName,
+      })}} ${poolConfig.connectTimeoutSeconds}`,
+      '# HELP codeguard_database_slow_query_threshold_seconds Configured slow-query threshold in seconds.',
+      '# TYPE codeguard_database_slow_query_threshold_seconds gauge',
+      `codeguard_database_slow_query_threshold_seconds{${formatLabels({
+        service: this.serviceName,
+      })}} ${queryTelemetry.slowQueryThresholdSeconds}`,
+      '# HELP codeguard_database_query_tracing_enabled Whether Prisma query tracing is enabled.',
+      '# TYPE codeguard_database_query_tracing_enabled gauge',
+      `codeguard_database_query_tracing_enabled{${formatLabels({
+        service: this.serviceName,
+      })}} ${queryTelemetry.tracingEnabled ? 1 : 0}`,
+      '# HELP codeguard_database_slow_queries_total Total Prisma queries over the configured slow-query threshold.',
+      '# TYPE codeguard_database_slow_queries_total counter',
+    );
+    for (const metric of queryTelemetry.metrics) {
+      lines.push(
+        `codeguard_database_slow_queries_total{${formatLabels(metric.labels)}} ${metric.slowCount}`,
+      );
+    }
+
+    lines.push(
+      '# HELP codeguard_database_query_duration_seconds Prisma query duration histogram in seconds.',
+      '# TYPE codeguard_database_query_duration_seconds histogram',
+      '# HELP codeguard_database_query_duration_max_seconds Maximum observed Prisma query duration in seconds by operation and model.',
+      '# TYPE codeguard_database_query_duration_max_seconds gauge',
+    );
+    for (const metric of queryTelemetry.metrics) {
+      for (const bucket of queryTelemetry.buckets) {
+        lines.push(
+          `codeguard_database_query_duration_seconds_bucket{${formatLabels({
+            ...metric.labels,
+            le: String(bucket),
+          })}} ${metric.buckets.get(bucket) ?? 0}`,
+        );
+      }
+      lines.push(
+        `codeguard_database_query_duration_seconds_bucket{${formatLabels({
+          ...metric.labels,
+          le: '+Inf',
+        })}} ${metric.count}`,
+      );
+      lines.push(
+        `codeguard_database_query_duration_seconds_sum{${formatLabels(metric.labels)}} ${metric.sumSeconds}`,
+      );
+      lines.push(
+        `codeguard_database_query_duration_seconds_count{${formatLabels(metric.labels)}} ${metric.count}`,
+      );
+      lines.push(
+        `codeguard_database_query_duration_max_seconds{${formatLabels(metric.labels)}} ${metric.maxSeconds}`,
+      );
+    }
+
     lines.push(
       '# HELP codeguard_scans_by_status Current number of scans by lifecycle status.',
       '# TYPE codeguard_scans_by_status gauge',
