@@ -17,7 +17,7 @@
     "test": "echo \"No shared-types tests configured\""
   },
   "devDependencies": {
-    "@types/node": "^20.19.25",
+    "@types/node": "^20.19.41",
     "typescript": "^5.9.3"
   }
 }

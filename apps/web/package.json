@@ -11,23 +11,23 @@
   },
   "dependencies": {
     "@codeguard/shared-types": "0.1.0",
-    "@hookform/resolvers": "^5.2.2",
-    "@tanstack/react-query": "^5.90.12",
-    "axios": "^1.13.2",
+    "@hookform/resolvers": "^5.4.0",
+    "@tanstack/react-query": "^5.100.14",
+    "axios": "^1.16.1",
     "clsx": "^2.1.1",
-    "next": "16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-hook-form": "^7.69.0",
-    "zod": "^4.2.0"
+    "next": "16.2.7",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-hook-form": "^7.77.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/node": "^20.19.25",
-    "@types/react": "^19.2.7",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^20.19.41",
+    "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.2.7",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }
