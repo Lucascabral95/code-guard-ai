@@ -1,4 +1,4 @@
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY apps/api-gateway/package.json apps/api-gateway/package.json
@@ -12,7 +12,7 @@ COPY apps/api-gateway apps/api-gateway
 COPY packages/shared-types packages/shared-types
 RUN npm --workspace @codeguard/api-gateway run build
 
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app/apps/api-gateway
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules /app/node_modules
